@@ -1,6 +1,8 @@
 const fps = (1000 / 42);
 let volumeSettings = JSON.parse(localStorage.volumeSettings || '{"level":0.5,"muted":false}');
 let zoomLevel = parseInt(localStorage.zoomLevel || '0');
+let exportState = null;
+let scrubPreviewFrame = null;
 
 jQuery(document).ready( function($) {	
 	
@@ -189,16 +191,9 @@ jQuery(document).ready( function($) {
 				zoomIn();
 				return false;
 			case 49: // 1
-				toggle_info_tab(1);
-				return false;
 			case 50: // 2
-				toggle_info_tab(2);
-				return false;
 			case 51: // 3
-				toggle_info_tab(3);
-				return false;
 			case 52: // 4
-				toggle_info_tab(4);
 				return false;
 			case 53: // 5
 				toggle_graphs(1);
@@ -217,13 +212,15 @@ jQuery(document).ready( function($) {
 	$(document).mouseup(function(){
 	    if(isDown){
 	        isDown = false;
-        	//set_replay_location(_replay_get_value(3));
+	        scrubPreviewFrame = null;
+	        update_timer(_replay_get_value(2));
 	    }
 	}); 
 	
 	$(window).on('resize', function(){
 		document.getElementById("canvas").innerWidth = window.innerWidth;
 		document.getElementById("canvas").innerHeight = window.innerHeight - 147;
+		apply_infobar_layout();
 	});
 
 	$('#zoom-in').on('click', function() {
@@ -237,7 +234,15 @@ jQuery(document).ready( function($) {
 	$('#game-slider').on('moved.zf.slider', function() {
 		if (isDown || isClicked) {
 			var new_val = document.getElementById("sliderOutput").value / 200;
+			scrubPreviewFrame = Math.round(_replay_get_value(4) * new_val);
+			update_timer(_replay_get_value(2));
 			_replay_set_value(6, new_val);
+			if (isClicked) {
+				setTimeout(function() {
+					scrubPreviewFrame = null;
+					update_timer(_replay_get_value(2));
+				}, 0);
+			}
 			isClicked = false;
 		}
 	});
@@ -251,10 +256,22 @@ jQuery(document).ready( function($) {
 		
 		toggle_sound();
 	});
+
+	$('#rv-rc-observer').on('click', function() {
+		toggle_observer();
+	});
+
+	$('#rv-rc-fow').on('click', function() {
+		toggle_fow();
+	});
 	
 	$('#rv-rc-faster').on('click', function() {
 		
 		play_faster();
+	});
+
+	$('#rv-rc-export').on('click', function() {
+		start_video_export();
 	});
 	
 	$('#rv-rc-slower').on('click', function() {
@@ -325,25 +342,30 @@ jQuery(document).ready( function($) {
 	    return false;
 	}
 	
-	document.getElementById('info_tab').addEventListener('dragstart',drag_start,false);
 	document.getElementById('graphs_tab').addEventListener('dragstart',drag_start,false);
 	document.getElementById("canvas").addEventListener('drop', drop, false);
 	update_army_tab([]);
 	$('#volume-slider-wrapper').css("display", "none");
+	update_observer_button();
+	update_fow_button();
+	update_zoom_buttons();
+	apply_infobar_layout();
 })	
 
 function zoomOut() {
-	if (zoomLevel >= -8) {
-		zoomLevel--;
-		localStorage.zoomLevel = '' + zoomLevel;
-		resize_canvas(Module.canvas);
-	}
+	var nextZoomLevel = zoomLevel - 1;
+	if (!can_zoom_to(nextZoomLevel)) return;
+	zoomLevel = nextZoomLevel;
+	localStorage.zoomLevel = '' + zoomLevel;
+	resize_canvas(Module.canvas);
+	update_zoom_buttons();
 }
 
 function zoomIn() {
 	zoomLevel++;
 	localStorage.zoomLevel = '' + zoomLevel;
 	resize_canvas(Module.canvas);
+	update_zoom_buttons();
 }
 
 var infoChart;
@@ -365,28 +387,126 @@ function toggle_graphs(tab_nr) {
 }
 
 function toggle_info_tab(tab_nr) {
-	
-	 if ($('#info_tab').is(":visible")) {
-		 
-		 if ($('#info_tab_panel' + tab_nr).hasClass("is-active")) {
-			 $('#info_tab').toggle();
-		 } else {
-			 $('#tab_link' + tab_nr).click();
-		 }
-		 
-	 } else {
-		 $('#info_tab').toggle();
-		 $('#tab_link' + tab_nr).click();
-	 }
-	 if (main_has_been_called) {
-		 update_info_tab();
-	 }
+	if (main_has_been_called) update_info_tab();
+}
+
+function apply_infobar_layout() {
+	var container = document.querySelector('.infobar-container');
+	var infobar = document.getElementById('infobar');
+	var infoDock = document.getElementById('info-dock');
+	var replayControl = document.querySelector('.replay-control');
+	if (!container || !infobar) return;
+	var hideOrder = ['hide-apm', 'hide-gas', 'hide-minerals', 'hide-army', 'hide-race', 'hide-workers', 'hide-supply'];
+	var rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+	var widths = {
+		race: 2.25 * rootFontSize,
+		supply: 6.5 * rootFontSize,
+		minerals: 4.75 * rootFontSize,
+		gas: 3.75 * rootFontSize,
+		workers: 4.25 * rootFontSize,
+		army: 3.75 * rootFontSize,
+		apm: 4.5 * rootFontSize
+	};
+	var preferredNameWidth = 224;
+	var required_infobar_width = function() {
+		var required = Math.min(preferredNameWidth, infobar.clientWidth || preferredNameWidth);
+		if (!container.classList.contains('hide-race')) required += widths.race;
+		if (!container.classList.contains('hide-supply')) required += widths.supply;
+		if (!container.classList.contains('hide-minerals')) required += widths.minerals;
+		if (!container.classList.contains('hide-gas')) required += widths.gas;
+		if (!container.classList.contains('hide-workers')) required += widths.workers;
+		if (!container.classList.contains('hide-army')) required += widths.army;
+		if (!container.classList.contains('hide-apm')) required += widths.apm;
+		return required;
+	};
+	var update_infobar_columns = function() {
+		var columns = [];
+		if (!container.classList.contains('hide-race')) columns.push('2.25rem');
+		columns.push((infobar.clientWidth || 0) >= preferredNameWidth ? 'minmax(224px, 1fr)' : 'minmax(0, 1fr)');
+		if (!container.classList.contains('hide-supply')) columns.push('6.5rem');
+		if (!container.classList.contains('hide-minerals')) columns.push('4.75rem');
+		if (!container.classList.contains('hide-gas')) columns.push('3.75rem');
+		if (!container.classList.contains('hide-workers')) columns.push('4.25rem');
+		if (!container.classList.contains('hide-army')) columns.push('3.75rem');
+		if (!container.classList.contains('hide-apm')) columns.push('4.5rem');
+		infobar.style.setProperty('--infobar-columns', columns.join(' '));
+	};
+
+	var classes = ['hide-race', 'hide-apm', 'hide-army', 'hide-workers', 'hide-minerals', 'hide-gas', 'hide-supply', 'abbrev-names'];
+	container.classList.remove('hide-info-dock');
+	for (var i = 0; i < classes.length; ++i) {
+		container.classList.remove(classes[i]);
+	}
+
+	var availableWidth = container.clientWidth;
+	var minimumInfobarWidth = 520;
+	var dockWidth = infoDock ? Math.ceil(infoDock.getBoundingClientRect().width || 760) : 760;
+	var replayControlWidth = replayControl ? Math.ceil(replayControl.getBoundingClientRect().width || 224) : 224;
+	if (availableWidth - dockWidth - replayControlWidth < minimumInfobarWidth) {
+		container.classList.add('hide-info-dock');
+	}
+
+	if (window.innerWidth < 420) container.classList.add('abbrev-names');
+	update_infobar_columns();
+
+	for (var i = 0; i < hideOrder.length; ++i) {
+		if (required_infobar_width() <= infobar.clientWidth && infobar.scrollWidth <= infobar.clientWidth) break;
+		container.classList.add(hideOrder[i]);
+		update_infobar_columns();
+	}
+
+	refresh_infobar_names();
+	refresh_info_tab_scales();
+}
+
+function can_zoom_to(nextZoomLevel) {
+	var canvasArea = document.getElementById('canvas-area');
+	if (!canvasArea) return true;
+	var unscaledSize = canvasArea.getBoundingClientRect();
+	var zoomFactor = 1.0 * Math.pow(1.1, nextZoomLevel);
+	var scaledWidth = Math.ceil(unscaledSize.width / zoomFactor);
+	var scaledHeight = Math.ceil(unscaledSize.height / zoomFactor);
+	if (scaledWidth > 4096 || scaledHeight > 4096) return false;
+	return scaledWidth * scaledHeight <= 8000000;
 }
 
 function jump_seconds(seconds) {
 	
 	var frame = Math.max(0, _replay_get_value(2) + Math.round(fps * seconds));
 	_replay_set_value(3, frame);
+}
+
+function apply_info_strip_scale(parent_element) {
+	var element = parent_element && parent_element[0];
+	if (!element) return;
+	var visibleChildren = Array.prototype.filter.call(element.children, function(child) {
+		return child.style.display !== 'none';
+	});
+	if (!visibleChildren.length) {
+		element.setAttribute('data-scale', '1');
+		return;
+	}
+	var availableWidth = element.clientWidth || 0;
+	var scale = 4;
+	var tileWidths = { 1: 29, 2: 19, 3: 15, 4: 11 };
+	if (availableWidth > 0) {
+		[1, 2, 3, 4].some(function(candidate) {
+			var rows = candidate === 1 ? 1 : candidate;
+			var columns = Math.max(1, Math.floor((availableWidth + 1) / tileWidths[candidate]));
+			if (columns * rows >= visibleChildren.length) {
+				scale = candidate;
+				return true;
+			}
+			return false;
+		});
+	}
+	element.setAttribute('data-scale', String(scale));
+}
+
+function refresh_info_tab_scales() {
+	$('#info_tab .info_tab_content').each(function() {
+		apply_info_strip_scale($(this));
+	});
 }
 
 function jump_frames(frames) {
@@ -445,6 +565,39 @@ function play_slower() {
 	update_speed(current_speed / 2);
 }
 
+function update_observer_button() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function") {
+		$('#rv-rc-observer').toggleClass('is-enabled', true);
+		return;
+	}
+	$('#rv-rc-observer').toggleClass('is-enabled', _observer_get_value() !== 0);
+}
+
+function update_zoom_buttons() {
+	$('#zoom-in').toggleClass('zoom-active', zoomLevel > 0);
+	$('#zoom-out').toggleClass('zoom-active', zoomLevel < 0);
+}
+
+function update_fow_button() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._fog_of_war_get_value !== "function") {
+		$('#rv-rc-fow').toggleClass('is-enabled', true);
+		return;
+	}
+	$('#rv-rc-fow').toggleClass('is-enabled', _fog_of_war_get_value() !== 0);
+}
+
+function toggle_observer() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function" || typeof Module._observer_set_value !== "function") return;
+	_observer_set_value(_observer_get_value() === 0 ? 1 : 0);
+	update_observer_button();
+}
+
+function toggle_fow() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._fog_of_war_get_value !== "function" || typeof Module._fog_of_war_set_value !== "function") return;
+	_fog_of_war_set_value(_fog_of_war_get_value() === 0 ? 1 : 0);
+	update_fow_button();
+}
+
 function toggle_sound() {
 
 	$('#rv-rc-sound').toggleClass('rv-rc-sound');
@@ -456,6 +609,168 @@ function toggle_sound() {
 	if (main_has_been_called) {
 		Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
 	}
+}
+
+function best_export_mime_type() {
+	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
+	var mimeTypes = config.mimeTypes || ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+	for (var i = 0; i < mimeTypes.length; ++i) {
+		if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mimeTypes[i])) {
+			return mimeTypes[i];
+		}
+	}
+	return '';
+}
+
+function set_export_button_state(isExporting) {
+	$('#rv-rc-export').toggleClass('is-exporting', isExporting);
+	$('#rv-rc-export').prop('disabled', isExporting);
+}
+
+function download_export_blob(blob) {
+	var url = URL.createObjectURL(blob);
+	var link = document.createElement('a');
+	var mapName = document.getElementById('map1').dataset.fullName || 'openbw-replay';
+	var safeMapName = mapName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'openbw-replay';
+	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
+	var extension = config.extension || 'webm';
+	link.href = url;
+	link.download = safeMapName + '.' + extension;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	setTimeout(function() {
+		URL.revokeObjectURL(url);
+	}, 1000);
+}
+
+function restore_export_state(saved) {
+	_replay_set_value(1, 1);
+	_replay_set_value(3, saved.frame);
+	_replay_set_value(0, saved.speed);
+	if (typeof Module._observer_set_value === "function") {
+		_observer_set_value(saved.observerEnabled ? 1 : 0);
+		update_observer_button();
+	}
+	if (typeof Module._fog_of_war_set_value === "function") {
+		_fog_of_war_set_value(saved.fowEnabled ? 1 : 0);
+		update_fow_button();
+	}
+	_replay_set_value(1, saved.paused ? 1 : 0);
+	update_speed(saved.speed);
+	set_export_button_state(false);
+	exportState = null;
+}
+
+function stop_video_export() {
+	if (!exportState || !exportState.recorder) return;
+	if (exportState.pollTimer) {
+		clearInterval(exportState.pollTimer);
+		exportState.pollTimer = null;
+	}
+	if (exportState.recorder.state !== 'inactive') {
+		exportState.recorder.stop();
+	}
+}
+
+function start_video_export() {
+	if (exportState || !main_has_been_called) return;
+	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
+	var fps = config.fps || 24;
+	var replaySpeed = config.replaySpeed || 1024;
+	var pollIntervalMs = config.pollIntervalMs || 100;
+	if (typeof MediaRecorder === "undefined" || !Module.canvas || typeof Module.canvas.captureStream !== "function") {
+		print_to_modal("Video export unavailable", "This browser does not support canvas recording.");
+		return;
+	}
+
+	var mimeType = best_export_mime_type();
+	var stream = Module.canvas.captureStream(fps);
+	var chunks = [];
+	var saved = {
+		frame: _replay_get_value(2),
+		speed: _replay_get_value(0),
+		paused: _replay_get_value(1) !== 0,
+		observerEnabled: typeof Module._observer_get_value === "function" ? _observer_get_value() !== 0 : true,
+		fowEnabled: typeof Module._fog_of_war_get_value === "function" ? _fog_of_war_get_value() !== 0 : true
+	};
+
+	set_export_button_state(true);
+	print_to_modal(
+		config.modalTitle || "Exporting video",
+		config.modalMessage || "Recording replay to WebM from the opening frame at maximum replay speed.",
+		false,
+		{ bottomViewport: true }
+	);
+
+	var recorder;
+	try {
+		recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+	} catch (error) {
+		set_export_button_state(false);
+		print_to_modal("Video export unavailable", "Failed to initialize the browser recorder.");
+		return;
+	}
+
+	exportState = {
+		recorder: recorder,
+		stream: stream,
+		chunks: chunks,
+		saved: saved,
+		targetEndFrame: window.__openbwTestExportFrameLimit ? Math.min(_replay_get_value(4), window.__openbwTestExportFrameLimit) : _replay_get_value(4),
+		pollTimer: null
+	};
+
+	recorder.ondataavailable = function(event) {
+		if (event.data && event.data.size) {
+			chunks.push(event.data);
+		}
+	};
+	recorder.onerror = function() {
+		if (!exportState) return;
+		restore_export_state(exportState.saved);
+		print_to_modal("Video export failed", "The browser recorder reported an error.");
+	};
+	recorder.onstop = function() {
+		if (!exportState) return;
+		var stoppedState = exportState;
+		if (stoppedState.stream) {
+			stoppedState.stream.getTracks().forEach(function(track) {
+				track.stop();
+			});
+		}
+		close_modal();
+		if (stoppedState.chunks.length) {
+			download_export_blob(new Blob(stoppedState.chunks, { type: mimeType || 'video/webm' }));
+		}
+		restore_export_state(stoppedState.saved);
+	};
+
+	_replay_set_value(1, 1);
+	_replay_set_value(3, 0);
+	if (typeof Module._observer_set_value === "function") {
+		_observer_set_value(1);
+		update_observer_button();
+	}
+
+	var beginRecording = function() {
+		if (_replay_get_value(2) > 0) {
+			setTimeout(beginRecording, 50);
+			return;
+		}
+
+		recorder.start();
+		_replay_set_value(0, replaySpeed);
+		update_speed(replaySpeed);
+		_replay_set_value(1, 0);
+		exportState.pollTimer = setInterval(function() {
+			if (!exportState) return;
+			if (_replay_get_value(2) >= exportState.targetEndFrame) {
+				stop_video_export();
+			}
+		}, pollIntervalMs);
+	};
+	beginRecording();
 }
 
 function toggle_pause() {
@@ -485,14 +800,21 @@ function set_icon(tab_nr, parent_element, child_nr, icon_id, percentage, info) {
 	if (icon_id < 100) icon_id = "0" + icon_id;
 	
 	var img_src = IMG_URL1 + icon_id + IMG_URL2;
+	while (parent_element.children("div").length <= child_nr) {
+		parent_element.append('<div><img src="."><span></span><div class="prod_prog_bar"></div></div>');
+	}
 	var element = parent_element.children("div").eq(child_nr);
 	var img_element = element.children("img");
+	if (tab_nr === 2 && element.children("span").length === 0) {
+		element.append('<span></span>');
+	}
 	
 	if (img_element.attr("src").localeCompare(img_src) != 0) {
 		img_element.attr("src", img_src);
 	}
 	if (tab_nr == 2) {
-		element.children("div").html(info);
+		element.children("span").html(info);
+		element.children("div").first().html("");
 	} else {
 		element.children("div").css("width", Math.round(percentage * 36) + "px");
 	}
@@ -504,7 +826,8 @@ function set_icon(tab_nr, parent_element, child_nr, icon_id, percentage, info) {
 
 function clear_icon(parent_element, child_nr) {
 	
-	var element = parent_element.children("div").eq(child_nr).hide();
+	var element = parent_element.children("div").eq(child_nr);
+	if (element.length) element.hide();
 }
 
 function update_army_tab(complete_units) {
@@ -541,9 +864,10 @@ function update_army_tab(complete_units) {
 			set_icon(2, element, type_count, type, 1, count);
 			++type_count;
 		}
-    	for (var j = type_count; j < 20; j++) {
+		for (var j = type_count; j < 20; j++) {
     		clear_icon(element, j);
     	}
+    	apply_info_strip_scale(element);
     }
 }
 
@@ -578,6 +902,41 @@ function update_research_tab(researches) {
 	    for (var j = incomplete.length + index; j < 20; ++j) {
 	    	clear_icon(element, j);
 	    }
+	}
+}
+
+function update_tech_tab(upgrades, researches) {
+	for (var i = 0; i < upgrades.length; i++) {
+		var element = $('#upgrade_tab_content' + (i + 1));
+		var slot = 0;
+		var completeUpgrades = upgrades[i][1];
+		for (var j = 0; j < completeUpgrades.length; j++) {
+			set_icon(3, element, slot++, completeUpgrades[j].icon, 1, completeUpgrades[j].level);
+		}
+
+		var incompleteUpgrades = upgrades[i][2];
+		for (var j = 0; j < incompleteUpgrades.length; j++) {
+			var upgradeProgress = 1 - incompleteUpgrades[j].remaining_time / incompleteUpgrades[j].total_time;
+			set_icon(3, element, slot++, incompleteUpgrades[j].icon, upgradeProgress, incompleteUpgrades[j].level);
+		}
+
+		var completeResearch = researches[i][1];
+		for (var j = 0; j < completeResearch.length; j++) {
+			if ($.inArray(completeResearch[j].id, unused_research) == -1) {
+				set_icon(4, element, slot++, completeResearch[j].icon, 1, "");
+			}
+		}
+
+		var incompleteResearch = researches[i][2];
+		for (var j = 0; j < incompleteResearch.length; j++) {
+			var researchProgress = 1 - incompleteResearch[j].remaining_time / incompleteResearch[j].total_time;
+			set_icon(4, element, slot++, incompleteResearch[j].icon, researchProgress, "");
+		}
+
+		for (var j = slot; j < element.children("div").length; ++j) {
+			clear_icon(element, j);
+		}
+		apply_info_strip_scale(element);
 	}
 }
 
@@ -656,12 +1015,13 @@ function update_production_tab(incomplete_units) {
 	    for (var j = unit_names[players[i]].length; j < 100; ++j) {
 	    	clear_icon(element, j);
 	    }
+	    apply_info_strip_scale(element);
     }
 }
 
 function update_timer(frame) {
-	
-	var sec_num = frame  * 42 / 1000;
+	var displayFrame = scrubPreviewFrame !== null ? scrubPreviewFrame : frame;
+	var sec_num = displayFrame  * 42 / 1000;
 	var hours   = Math.floor(sec_num / 3600);
     var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
     var seconds = Math.floor(sec_num - (hours * 3600) - (minutes * 60));
@@ -674,9 +1034,11 @@ function update_timer(frame) {
     if (hours > 0) {
     	time = hours + ':' + time;
     }
-	document.getElementById("rv-rc-timer").innerHTML = "time: " + time;
+	var timerElement = document.getElementById("rv-rc-timer");
+	timerElement.innerHTML = "time: " + time;
+	timerElement.classList.toggle("scrub-preview", scrubPreviewFrame !== null);
 	
-	$("#goto-frame-value").val(frame);
+	$("#goto-frame-value").val(displayFrame);
 	$("#goto-time-value").val(time);
 }
 
@@ -692,6 +1054,8 @@ function update_handle_position(value) {
 }
 
 function set_map_name(name) {
+	document.getElementById("map1").dataset.fullName = name;
+	document.getElementById("map2").dataset.fullName = name;
 	document.getElementById("map1").innerHTML = name;
 	document.getElementById("map2").innerHTML = name;
 }
@@ -747,7 +1111,32 @@ function set_color(player, color) {
 }
 
 function set_nick(player, nick) {
-	document.getElementById("nick" + player).innerHTML = nick;
+	var element = document.getElementById("nick" + player);
+	element.dataset.fullName = nick;
+	element.innerHTML = nick;
+	refresh_infobar_names();
+}
+
+function abbreviate_name(name) {
+	if (!name) return "";
+	if (name.length <= 8) return name;
+	return name.slice(0, 7) + ".";
+}
+
+function refresh_infobar_names() {
+	var container = document.querySelector('.infobar-container');
+	if (!container) return;
+	var abbreviate = container.classList.contains('abbrev-names');
+	for (var i = 1; i <= 8; ++i) {
+		var nickElement = document.getElementById("nick" + i);
+		if (nickElement && nickElement.dataset.fullName) {
+			nickElement.innerHTML = abbreviate ? abbreviate_name(nickElement.dataset.fullName) : nickElement.dataset.fullName;
+		}
+	}
+	var map1 = document.getElementById("map1");
+	var map2 = document.getElementById("map2");
+	if (map1 && map1.dataset.fullName) map1.innerHTML = abbreviate ? abbreviate_name(map1.dataset.fullName) : map1.dataset.fullName;
+	if (map2 && map2.dataset.fullName) map2.innerHTML = abbreviate ? abbreviate_name(map2.dataset.fullName) : map2.dataset.fullName;
 }
 
 function set_supply(player, supply) {

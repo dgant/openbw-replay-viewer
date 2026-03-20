@@ -2,6 +2,7 @@
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Replay Viewer – OpenBW</title>
+    <link rel="icon" href="data:,">
     <link rel="dns-prefetch" href="https://ajax.googleapis.com/">
     <link rel="dns-prefetch" href="https://s.w.org/">
     <link rel="stylesheet" id="main-stylesheet-css" href="foundation.css?ver=2.6.1" type="text/css" media="all">
@@ -41,16 +42,21 @@
                         <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" height="300" width="400" style="height: 300px; width: 400px; position: relative; top: calc(40% - 120px)"></canvas>
                     </div>
                 </div>
-                <div id="zoom-buttons" style="position: absolute; bottom: 0; right: 16px; display: none; flex-flow: column nowrap; z-index:100;">
-                    <button class="button secondary small" id="zoom-in">+</button>
-                    <button class="button secondary small" id="zoom-out">-</button>
+                <div id="zoom-buttons" style="position: absolute; bottom: 16px; right: 16px; display: none; z-index:100;">
+                    <button id="rv-rc-observer" type="button" class="rv-rc-observer is-enabled" title="Toggle auto observer"></button>
+                    <button class="button secondary small" id="zoom-in" title="Zoom in">+</button>
+                    <button id="rv-rc-fow" type="button" class="rv-rc-fow is-enabled" title="Toggle fog of war"></button>
+                    <button class="button secondary small" id="zoom-out" title="Zoom out">-</button>
+                </div>
+                <div id="viewport-export" style="position: absolute; top: 16px; right: 16px; display: none; z-index: 100;">
+                    <button id="rv-rc-export" type="button" class="rv-rc-export" title="Export replay video"></button>
                 </div>
                 <aside draggable="true" id="info_tab" class="info_tab">
                 <ul class="tabs" data-tabs="2el777-tabs" id="info-tabs">
                     <li class="tabs-title is-active" role="presentation"><a id="tab_link1" href="#info_tab_panel1" aria-selected="true" role="tab" aria-controls="info_tab_panel1">Production</a></li>
                     <li class="tabs-title" role="presentation"><a id="tab_link2" href="#info_tab_panel2" role="tab" aria-controls="info_tab_panel2" aria-selected="false">Army</a></li>
-                    <li class="tabs-title" role="presentation"><a id="tab_link3" href="#info_tab_panel3" role="tab" aria-controls="info_tab_panel3" aria-selected="false">Upgrades</a></li>
-                    <li class="tabs-title" role="presentation"><a id="tab_link4" href="#info_tab_panel4" role="tab" aria-controls="info_tab_panel4" aria-selected="false">Research</a></li>
+                    <li class="tabs-title" role="presentation"><a id="tab_link3" href="#info_tab_panel3" role="tab" aria-controls="info_tab_panel3" aria-selected="false">Tech</a></li>
+                    <li class="tabs-title info-tab-hidden" role="presentation"><a id="tab_link4" href="#info_tab_panel4" role="tab" aria-controls="info_tab_panel4" aria-selected="false">Research</a></li>
                 </ul>
                 <div class="tabs-content" data-tabs-content="info-tabs">
                     <div class="tabs-panel is-active" id="info_tab_panel1" role="tabpanel" aria-hidden="false" aria-labelledby="tab_link1">
@@ -347,6 +353,14 @@
                     
                                 </div>
                 
+                <div id="info-dock" class="shrink column bottom-info-dock">
+                    <div class="info-dock-header">
+                        <div class="info-dock-title info-dock-title-production">Production</div>
+                        <div class="info-dock-title">Army</div>
+                        <div class="info-dock-title">Tech</div>
+                    </div>
+                    <div id="info-dock-body"></div>
+                </div>
                 <div class="shrink column replay-control">
                     
                     <div class="row rv-rc-controls">
@@ -455,7 +469,7 @@
     </tr>
     <tr>
     <td>‘1’, ‘2’, ‘3’, ‘4’</td>
-    <td>show/hide production / army composition / upgrades / research tab.</td>
+    <td>show production / army composition / tech tab. ‘4’ also selects tech for compatibility.</td>
     </tr>
     <tr>
     <td>‘5’</td>
@@ -519,7 +533,9 @@
         </div>
     </div>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.min.js?ver=1"></script>
+    <script type="text/javascript" src="v1.4/video-export-config.js?ver=1.4.0"></script>
     <script type="text/javascript" src="v1.4/info-bar.js?ver=1.4.0"></script>
+    <script type="text/javascript" src="v1.4/mpq-host-config.js?ver=1.4.0"></script>
     <script type="text/javascript">
     /* <![CDATA[ */
     var ajax_object = {"replay_file":new URLSearchParams(window.location.search).get('rep')};

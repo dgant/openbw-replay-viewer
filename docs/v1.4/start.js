@@ -1,5 +1,3 @@
-$(document).foundation();
-
 /*
  * Replay value mappings: _replay_get_value(x):
  * 
@@ -32,6 +30,8 @@ var C_RACE = 13;
 var C_APM = 14;
 
 var C_MPQ_FILENAMES = ["StarDat.mpq", "BrooDat.mpq", "Patch_rt.mpq"];
+var C_MPQ_BASE_URL = (window.OPENBW_MPQ_BASE_URL || "/bw").replace(/\/$/, "");
+var C_DEFAULT_MPQ_SOURCES = [C_MPQ_BASE_URL + "/STARDAT.MPQ", C_MPQ_BASE_URL + "/BROODAT.MPQ", C_MPQ_BASE_URL + "/patch_rt.mpq"];
 var C_SPECIFY_MPQS_MESSAGE = "Please select StarDat.mpq, BrooDat.mpq and patch_rt.mpq from your StarCraft directory.";
 
 /*****************************
@@ -41,7 +41,6 @@ var Module = {
     preRun: [],
     postRun: [],
     canvas: null,
-    setWindowTitle: function() {},
 	print: console.log,
 	printErr: console.error,
 	//filePackagePrefixURL: "../bw/"
@@ -54,6 +53,7 @@ var load_replay_data_arr = null;
 var files = [];
 var js_read_buffers = [];
 var is_reading = false;
+var is_fetching_default_mpqs = false;
 
 var players = [];
 
@@ -66,9 +66,17 @@ var players = [];
  * Adds the drag and drop functionality.
  */
 jQuery(document).ready( function($) {
+	$('#rv_modal, #quick_help, #goto').foundation();
 	
 	Module.canvas = document.getElementById("canvas");
 	var canvas = Module.canvas;
+	var infoTab = document.getElementById("info_tab");
+	var infoDock = document.getElementById("info-dock-body");
+	if (infoTab && infoDock) {
+		infoTab.draggable = false;
+		infoDock.appendChild(infoTab);
+		infoTab.style.display = "block";
+	}
 	
 	set_db_handle(function(event) {
 		  
@@ -97,10 +105,14 @@ jQuery(document).ready( function($) {
 	// 	}
 	// });
 	
-	$('#specify_mpqs_button').on('click', function(e){
+		$('#specify_mpqs_button').on('click', function(e){
 		
 		print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
 	});
+
+	if (typeof apply_infobar_layout === "function") {
+		apply_infobar_layout();
+	}
 })
 
 /**
@@ -157,30 +169,19 @@ function update_graphs(frame) {
  */
 function update_info_tab() {
 
-	if ($('#info_tab').is(":visible")) {
-		 
-		var funcs = Module.get_util_funcs();
-		
-		if ($('#info_tab_panel1').hasClass("is-active")) {
-			update_production_tab(funcs.get_all_incomplete_units());
-		} else if ($('#info_tab_panel2').hasClass("is-active")) {
-			update_army_tab(funcs.get_all_completed_units());
-		} else if ($('#info_tab_panel3').hasClass("is-active")) {
-			
-			var upgrades = [];
-			for (var i = 0; i < players.length; i++) {
-				upgrades.push([players[i], funcs.get_completed_upgrades(players[i]), funcs.get_incomplete_upgrades(players[i])]);
-			}
-			update_upgrades_tab(upgrades);
-		} else if ($('#info_tab_panel4').hasClass("is-active")) {
-			
-			var researches = [];
-			for (var i = 0; i < players.length; i++) {
-				researches.push([players[i], funcs.get_completed_research(players[i]), funcs.get_incomplete_research(players[i])]);
-			}
-			update_research_tab(researches);
-		}
+	if (!$('#info_tab').is(":visible")) return;
+
+	var funcs = Module.get_util_funcs();
+	update_production_tab(funcs.get_all_incomplete_units());
+	update_army_tab(funcs.get_all_completed_units());
+
+	var upgrades = [];
+	var researches = [];
+	for (var i = 0; i < players.length; i++) {
+		upgrades.push([players[i], funcs.get_completed_upgrades(players[i]), funcs.get_incomplete_upgrades(players[i])]);
+		researches.push([players[i], funcs.get_completed_research(players[i]), funcs.get_incomplete_research(players[i])]);
 	}
+	update_tech_tab(upgrades, researches);
 }
 	
 /**
@@ -221,8 +222,8 @@ function update_info_bar(frame) {
         resource_count[i * 4 + 4][array_index] = army_size;
         
         if (!first_frame_played) {
-	        set_map_name(Pointer_stringify(_replay_get_value(5)));
-	        set_nick(		i + 1, Pointer_stringify(_player_get_value(players[i], C_NICK)));
+	        set_map_name(UTF8ToString(_replay_get_value(5)));
+	        set_nick(		i + 1, UTF8ToString(_player_get_value(players[i], C_NICK)));
 	        set_color(		i + 1, _player_get_value(players[i], C_COLOR));
 	        set_race(		i + 1, race);
         }
@@ -236,6 +237,9 @@ function update_info_bar(frame) {
     }
 
     first_frame_played = true;
+	if (typeof apply_infobar_layout === "function") {
+		apply_infobar_layout();
+	}
 }
 
 /*****************************
@@ -324,7 +328,7 @@ function load_replay_file(files, canvas) {
                 if (e.target.error) throw "read failed: " + e.target.error;
                 var arr = new Int8Array(e.target.result);
                 if (main_has_been_called) {
-                    var buf = allocate(arr, 'i8', ALLOC_NORMAL);
+                    var buf = allocate_replay_buffer(arr);
                     start_replay(buf, arr.length);
                     _free(buf);
                 } else {
@@ -395,11 +399,9 @@ function resize_canvas(canvas) {
 
 function js_fatal_error(ptr) {
 	
-    var str = Pointer_stringify(ptr);
+    var str = UTF8ToString(ptr);
 
-    print_to_modal("Fatal error: Unimplemented", "Please file a bug report.<br/>" +
-    		"Only 1v1 replays currently work. Protoss is not supported yet<br/>" +
-    		"fatal error: " + str);
+    print_to_modal("Fatal error", str);
 }
 
 function print_to_canvas(text, posx, posy, canvas) {
@@ -409,8 +411,34 @@ function print_to_canvas(text, posx, posy, canvas) {
     context.fillText(text, posx, posy);
 }
 
-function print_to_modal(title, text, mpqspecify) {
-	
+function apply_player_row_layout(playerCount) {
+	if (playerCount > 2) {
+		$('.infobar-container').addClass('multiplayer-labels-top');
+		$('.2player').hide();
+		$('.5player').show();
+		$('.infobar-player div').css("padding", "0px 5px 0px 5px");
+	} else {
+		$('.infobar-container').removeClass('multiplayer-labels-top');
+		$('.2player').show();
+		$('.5player').hide();
+		$('.infobar-player div').css("padding", "5px 5px 5px 5px");
+	}
+}
+
+function set_modal_presentation(options) {
+	options = options || {};
+	var modal = $('#rv_modal');
+	var overlay = modal.closest('.reveal-overlay');
+	modal.removeClass('rv-modal-bottom');
+	overlay.removeClass('rv-modal-overlay-clear');
+	if (options.bottomViewport) {
+		modal.addClass('rv-modal-bottom');
+		overlay.addClass('rv-modal-overlay-clear');
+	}
+}
+
+function print_to_modal(title, text, mpqspecify, options) {
+	set_modal_presentation(options);
 	$('#rv_modal h3').html(title);
 	$('#rv_modal p').html(text);
 	if (mpqspecify) {
@@ -423,7 +451,7 @@ function print_to_modal(title, text, mpqspecify) {
 }
 
 function close_modal() {
-	
+	set_modal_presentation();
 	$('#rv_modal').foundation('close');
 }
 
@@ -443,6 +471,13 @@ function has_all_files() {
         if (!files[i]) return false;
     }
     return true;
+}
+
+function allocate_replay_buffer(arr) {
+	if (!Module.HEAPU8) throw new Error("OpenBW heap is not initialized");
+	var buf = _malloc(arr.length);
+	Module.HEAPU8.set(arr, buf);
+	return buf;
 }
 
 /*****************************
@@ -496,7 +531,7 @@ function set_db_handle(success_callback) {
 		request.onerror = function(event) {
 			
 		  console.log("Could not open OpenBW_DB.");
-		  print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
+		  fetch_default_mpqs();
 		};
 		
 		request.onsuccess = success_callback;
@@ -518,14 +553,18 @@ function get_blob(store, key, file_index, callback) {
 	request.onerror = function(event) {
 	
 	  console.log("Could not retrieve " + key + " from DB.");
-	  print_to_modal("Loading MPQs", key + ": failed.");
+	  callback(file_index, false);
 	};
 	request.onsuccess = function(event) {
-	  
+		if (!request.result || !request.result.blob) {
+			callback(file_index, false);
+			return;
+		}
+
 		files[file_index] = request.result.blob;
 		console.log("read " + request.result.mpqkp + "; size: " + request.result.blob.length + ": success.");
 		print_to_modal("Loading MPQs", key + ": success.");
-		callback(file_index);
+		callback(file_index, true);
 	};
 }
 
@@ -567,22 +606,70 @@ function load_mpq_from_db() {
 	var objectStore = transaction.objectStore("mpqs");
 	console.log("attempting to retrieve files from db...");
 	
-	var callback = function(index) {
-		
-		if (index == 2) {
-			if (has_all_files()) {
-				console.log("all files read.");
-				close_modal();
-				parse_mpq_files();
-			} else {
-				print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
-			}
+	var completed = 0;
+	var callback = function(index, ok) {
+		++completed;
+		if (completed !== C_MPQ_FILENAMES.length) return;
+
+		if (has_all_files()) {
+			console.log("all files read.");
+			close_modal();
+			parse_mpq_files();
+		} else {
+			fetch_default_mpqs();
 		}
 	}
 
 	for(var file_index = 0; file_index < 3; file_index++) {
 		
 		get_blob(objectStore, C_MPQ_FILENAMES[file_index], file_index, callback);
+	}
+}
+
+function fetch_default_mpqs() {
+	if (is_fetching_default_mpqs || has_all_files()) return;
+	is_fetching_default_mpqs = true;
+
+	print_to_modal("Loading MPQs", "Downloading bundled MPQs...");
+
+	var loaded = 0;
+	var failed = false;
+
+	var on_complete = function() {
+		loaded += 1;
+		if (loaded !== C_MPQ_FILENAMES.length) return;
+
+		is_fetching_default_mpqs = false;
+		if (failed || !has_all_files()) {
+			print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
+			return;
+		}
+
+		store_mpq_in_db();
+		parse_mpq_files();
+		$('#select_replay_label').removeClass('disabled');
+		close_modal();
+	};
+
+	for (var i = 0; i < C_MPQ_FILENAMES.length; ++i) {
+		(function(index) {
+			var req = new XMLHttpRequest();
+			req.onreadystatechange = function() {
+				if (req.readyState !== XMLHttpRequest.DONE) return;
+
+				if (req.status === 200) {
+					files[index] = new File([req.response], C_MPQ_FILENAMES[index]);
+					print_to_modal("Loading MPQs", C_MPQ_FILENAMES[index] + ": success.");
+				} else {
+					failed = true;
+					console.log("Failed to fetch bundled MPQ " + C_DEFAULT_MPQ_SOURCES[index] + ": " + req.status);
+				}
+				on_complete();
+			};
+			req.responseType = "arraybuffer";
+			req.open("GET", C_DEFAULT_MPQ_SOURCES[index], true);
+			req.send();
+		})(i);
 	}
 }
 
@@ -600,7 +687,7 @@ function load_replay_url(url) {
         if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
         	
 	        var arr = new Int8Array(req.response);
-	        var buf = allocate(arr, 'i8', ALLOC_NORMAL);
+	        var buf = allocate_replay_buffer(arr);
 	        start_replay(buf, arr.length);
 	        _free(buf);
         } else {
@@ -617,7 +704,8 @@ var first_frame_played = false;
 function start_replay(buffer, length) {
 	
 	$('#top').css('display', 'none');
-	$('#zoom-buttons').css('display', 'flex');
+	$('#zoom-buttons').css('display', 'grid');
+	$('#viewport-export').css('display', 'block');
 	$('.widget_replay_viewer_widget').css({
 		'position': 'absolute',
 		'width': '100%',
@@ -639,13 +727,19 @@ function start_replay(buffer, length) {
 	}
 
     Module.print("calling main");
-    if (!main_has_been_called) {
-    	Module.callMain();
-    	main_has_been_called = true;
-		Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
-    }
-    
-    _load_replay(buffer, length);
+	    if (!main_has_been_called) {
+	    	Module.callMain();
+	    	main_has_been_called = true;
+			Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
+	    }
+		if (typeof update_observer_button === "function") {
+			update_observer_button();
+		}
+		if (typeof update_fow_button === "function") {
+			update_fow_button();
+		}
+	    
+	    _load_replay(buffer, length);
     
     first_frame_played = false;
     
@@ -668,15 +762,7 @@ function start_replay(buffer, length) {
     for (var i = players.length + 1; i <= 12; i++) {
     	$('.per-player-info' + i).hide();
     }
-    if (players.length > 4) {
-    	$('.2player').hide();
-    	$('.5player').show();
-    	$('.infobar-player div').css("padding", "0px 5px 0px 5px");
-    } else {
-    	$('.2player').show();
-    	$('.5player').hide();
-    	$('.infobar-player div').css("padding", "5px 5px 5px 5px");
-    }
+    apply_player_row_layout(players.length);
 }
 
 function on_read_all_done() {
@@ -686,7 +772,7 @@ function on_read_all_done() {
     if (load_replay_data_arr) {
         var arr = load_replay_data_arr;
         load_replay_data_arr = null;
-        var buf = allocate(arr, 'i8', ALLOC_NORMAL);
+        var buf = allocate_replay_buffer(arr);
         start_replay(buf, arr.length);
         _free(buf);
     } else {
