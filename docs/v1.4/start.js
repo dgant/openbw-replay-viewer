@@ -49,6 +49,8 @@ var Module = {
 var db_handle;
 var main_has_been_called = false;
 var load_replay_data_arr = null;
+var replayPlaylist = [];
+var replayPlaylistIndex = -1;
 
 var files = [];
 var js_read_buffers = [];
@@ -119,6 +121,10 @@ jQuery(document).ready( function($) {
  * Sets up the initial canvas look.
  */
 function initialize_canvas(canvas) {
+	document.title = window.OPENBW_WINDOW_TITLE || "StarCraft Replay Viewer";
+	Module.setWindowTitle = function() {
+		document.title = window.OPENBW_WINDOW_TITLE || "StarCraft Replay Viewer";
+	};
 	
 	canvas.height = '300';
 	canvas.style.height = '300px';
@@ -128,13 +134,7 @@ function initialize_canvas(canvas) {
 	canvas.style.top = 'calc(40% - 120px)';
 	
 	if (ajax_object.replay_file == null) {
-		
-		var context = canvas.getContext("2d");
-		context.fillStyle = "black";
-		context.font = "24px Arial";
-		context.textAlign = "center";
-		context.fillText("Drop a replay file", 200, 130);
-		context.fillText("anywhere on the page", 200, 160);
+		return;
 	// } else {
 		
 	// 	resize_canvas(canvas);
@@ -172,15 +172,14 @@ function update_info_tab() {
 	if (!$('#info_tab').is(":visible")) return;
 
 	var funcs = Module.get_util_funcs();
-	update_production_tab(funcs.get_all_incomplete_units());
-	update_army_tab(funcs.get_all_completed_units());
-
 	var upgrades = [];
 	var researches = [];
 	for (var i = 0; i < players.length; i++) {
 		upgrades.push([players[i], funcs.get_completed_upgrades(players[i]), funcs.get_incomplete_upgrades(players[i])]);
 		researches.push([players[i], funcs.get_completed_research(players[i]), funcs.get_incomplete_research(players[i])]);
 	}
+	update_production_tab(funcs.get_all_incomplete_units(), upgrades, researches);
+	update_army_tab(funcs.get_all_completed_units());
 	update_tech_tab(upgrades, researches);
 }
 	
@@ -307,40 +306,172 @@ function add_drag_and_drop_listeners(element, canvas) {
 	    e.dataTransfer.dropEffect = "move";
 	}, false);
 
-	element.addEventListener("drop", function(e) {
+	element.addEventListener("drop", async function(e) {
 	    e.stopPropagation();
 	    e.preventDefault();
-	    var files = e.dataTransfer.files;
-	    load_replay_file(files, canvas);
+	    await load_replay_drop(e.dataTransfer, canvas);
 	}, false);
 }
 
 /*****************************
  * Helper functions
  *****************************/
+function is_replay_file_name(name) {
+	return /\.rep$/i.test(name || "");
+}
+
+function create_playlist_entry(file, label) {
+	return {
+		file: file,
+		label: label || file.name,
+		displayName: file.name
+	};
+}
+
+function update_replay_playlist_controls() {
+	var controls = $('#playlist-controls');
+	if (!controls.length) return;
+	var isReplayVisible = !document.body.classList.contains('pregame-active') && typeof Module !== "undefined" && Module.canvas && Module.canvas.style.position === "absolute";
+	var canvasArea = document.getElementById('canvas-area');
+	var minimap = document.getElementById('canvas');
+	if (canvasArea && minimap) {
+		var areaRect = canvasArea.getBoundingClientRect();
+		var minimapLeft = 16;
+		var minimapWidth = 128;
+		if (typeof Module !== "undefined" && Module.canvas) {
+			var canvasRect = Module.canvas.getBoundingClientRect();
+			minimapLeft = Math.max(16, Math.round(canvasRect.left - areaRect.left));
+		}
+		controls.css('left', (minimapLeft + minimapWidth + 8) + 'px');
+	}
+	var hasPlaylist = replayPlaylist.length > 1 && replayPlaylistIndex >= 0 && isReplayVisible;
+	controls.css('display', hasPlaylist ? 'flex' : 'none');
+	if (!hasPlaylist) return;
+	$('#playlist-position').text('#' + (replayPlaylistIndex + 1) + ' of ' + replayPlaylist.length);
+	$('#playlist-name').text(replayPlaylist[replayPlaylistIndex].displayName);
+	$('#playlist-prev').prop('disabled', replayPlaylistIndex <= 0);
+	$('#playlist-next').prop('disabled', replayPlaylistIndex >= replayPlaylist.length - 1);
+}
+
+function set_replay_playlist(entries, activeIndex) {
+	replayPlaylist = entries.slice().map(function(entry) {
+		return {
+			file: entry.file,
+			label: entry.label || (entry.file ? entry.file.name : ""),
+			displayName: entry.displayName || (entry.file ? entry.file.name : entry.label || "")
+		};
+	}).sort(function(a, b) {
+		return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+	});
+	replayPlaylistIndex = replayPlaylist.length ? Math.max(0, Math.min(activeIndex || 0, replayPlaylist.length - 1)) : -1;
+	update_replay_playlist_controls();
+}
+
+function read_replay_entry(entry, canvas) {
+	if (!entry || !entry.file) return;
+	Module.print("loading replay from file " + entry.label);
+	var reader = new FileReader();
+	(function() {
+		reader.onloadend = function(e) {
+			if (!e.target.error && e.target.readyState != FileReader.DONE) throw "read failed with no error!?";
+			if (e.target.error) throw "read failed: " + e.target.error;
+			var arr = new Int8Array(e.target.result);
+			if (main_has_been_called) {
+				var buf = allocate_replay_buffer(arr);
+				start_replay(buf, arr.length);
+				_free(buf);
+			} else {
+				load_replay_data_arr = arr;
+				print_to_canvas(entry.label, 15, 80, canvas);
+				if (has_all_files()) {
+					on_read_all_done();
+				}
+			}
+		};
+	})();
+	reader.readAsArrayBuffer(entry.file);
+}
+
+function load_replay_playlist_index(index, canvas) {
+	if (index < 0 || index >= replayPlaylist.length) return;
+	replayPlaylistIndex = index;
+	update_replay_playlist_controls();
+	read_replay_entry(replayPlaylist[index], canvas);
+}
+
+function load_previous_replay() {
+	if (replayPlaylistIndex <= 0) return;
+	load_replay_playlist_index(replayPlaylistIndex - 1, Module.canvas);
+}
+
+function load_next_replay() {
+	if (replayPlaylistIndex < 0 || replayPlaylistIndex >= replayPlaylist.length - 1) return;
+	load_replay_playlist_index(replayPlaylistIndex + 1, Module.canvas);
+}
+
+function normalize_replay_entries(fileList) {
+	return Array.prototype.slice.call(fileList || [])
+		.filter(function(file) { return is_replay_file_name(file.name); })
+		.map(function(file) { return create_playlist_entry(file, file.webkitRelativePath || file.name); });
+}
+
+function read_file_entry(entry) {
+	return new Promise(function(resolve, reject) {
+		entry.file(resolve, reject);
+	});
+}
+
+function read_directory_entries(reader) {
+	return new Promise(function(resolve, reject) {
+		reader.readEntries(resolve, reject);
+	});
+}
+
+async function collect_replay_entries_from_entry(entry, results) {
+	if (!entry) return;
+	if (entry.isFile) {
+		var file = await read_file_entry(entry);
+		if (is_replay_file_name(file.name)) {
+			results.push(create_playlist_entry(file, entry.fullPath ? entry.fullPath.replace(/^\/+/, '') : (file.webkitRelativePath || file.name)));
+		}
+		return;
+	}
+	if (!entry.isDirectory) return;
+	var reader = entry.createReader();
+	while (true) {
+		var entries = await read_directory_entries(reader);
+		if (!entries.length) break;
+		for (var i = 0; i < entries.length; ++i) {
+			await collect_replay_entries_from_entry(entries[i], results);
+		}
+	}
+}
+
+async function load_replay_drop(dataTransfer, canvas) {
+	var results = [];
+	if (dataTransfer && dataTransfer.items && dataTransfer.items.length) {
+		for (var i = 0; i < dataTransfer.items.length; ++i) {
+			var item = dataTransfer.items[i];
+			if (!item) continue;
+			var entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+			if (entry) {
+				await collect_replay_entries_from_entry(entry, results);
+			}
+		}
+	}
+	if (!results.length) {
+		results = normalize_replay_entries(dataTransfer && dataTransfer.files ? dataTransfer.files : []);
+	}
+	if (!results.length) return;
+	set_replay_playlist(results, 0);
+	load_replay_playlist_index(0, canvas);
+}
+
 function load_replay_file(files, canvas) {
-	if (files.length != 1) return;
-    Module.print("loading replay from file " + files[0].name);
-    var reader = new FileReader();
-        (function() {
-            reader.onloadend = function(e) {
-                if (!e.target.error && e.target.readyState != FileReader.DONE) throw "read failed with no error!?";
-                if (e.target.error) throw "read failed: " + e.target.error;
-                var arr = new Int8Array(e.target.result);
-                if (main_has_been_called) {
-                    var buf = allocate_replay_buffer(arr);
-                    start_replay(buf, arr.length);
-                    _free(buf);
-                } else {
-                    load_replay_data_arr = arr;
-                    print_to_canvas(files[0].name, 15, 80, canvas);
-                    if (has_all_files()) {
-                    	on_read_all_done();
-                    }
-                }
-            };
-        })();
-        reader.readAsArrayBuffer(files[0]);
+	var entries = normalize_replay_entries(files);
+	if (!entries.length) return;
+	set_replay_playlist(entries, 0);
+	load_replay_playlist_index(0, canvas);
 }
 
 let currentSize = {
@@ -380,6 +511,10 @@ function resize_canvas(canvas) {
 	let scaledWidth = Math.ceil(unscaledSize.width / zoomFactor);
 	let scaledHeight = Math.ceil(unscaledSize.height / zoomFactor);
 
+	if (typeof _ui_set_minimap_reference_size === "function") {
+		_ui_set_minimap_reference_size(Math.ceil(unscaledSize.width), Math.ceil(unscaledSize.height));
+	}
+
 	$('#canvas-zoom-inner').css({
 		'width': scaledWidth,
 		'height': scaledHeight,
@@ -416,12 +551,10 @@ function apply_player_row_layout(playerCount) {
 		$('.infobar-container').addClass('multiplayer-labels-top');
 		$('.2player').hide();
 		$('.5player').show();
-		$('.infobar-player div').css("padding", "0px 5px 0px 5px");
 	} else {
 		$('.infobar-container').removeClass('multiplayer-labels-top');
 		$('.2player').show();
 		$('.5player').hide();
-		$('.infobar-player div').css("padding", "5px 5px 5px 5px");
 	}
 }
 
@@ -439,7 +572,8 @@ function set_modal_presentation(options) {
 
 function print_to_modal(title, text, mpqspecify, options) {
 	set_modal_presentation(options);
-	$('#rv_modal h3').html(title);
+	var showSpinner = title === "Loading files";
+	$('#rv_modal h3').html((showSpinner ? '<span class="loading-spinner" aria-hidden="true"></span>' : '') + title);
 	$('#rv_modal p').html(text);
 	if (mpqspecify) {
 		$('#mpq_specify').css('display', 'inline-block');
@@ -516,6 +650,8 @@ function js_file_size(index) {
 function js_load_done() {
 	
     js_read_buffers = null;
+    $('#pregame-overlay').hide();
+    $('body').removeClass('pregame-active');
 }
 
 /*****************************
@@ -563,7 +699,7 @@ function get_blob(store, key, file_index, callback) {
 
 		files[file_index] = request.result.blob;
 		console.log("read " + request.result.mpqkp + "; size: " + request.result.blob.length + ": success.");
-		print_to_modal("Loading MPQs", key + ": success.");
+		print_to_modal("Loading files", key + ": success.");
 		callback(file_index, true);
 	};
 }
@@ -630,7 +766,7 @@ function fetch_default_mpqs() {
 	if (is_fetching_default_mpqs || has_all_files()) return;
 	is_fetching_default_mpqs = true;
 
-	print_to_modal("Loading MPQs", "Downloading bundled MPQs...");
+	print_to_modal("Loading files", "Downloading bundled files...");
 
 	var loaded = 0;
 	var failed = false;
@@ -659,7 +795,7 @@ function fetch_default_mpqs() {
 
 				if (req.status === 200) {
 					files[index] = new File([req.response], C_MPQ_FILENAMES[index]);
-					print_to_modal("Loading MPQs", C_MPQ_FILENAMES[index] + ": success.");
+					print_to_modal("Loading files", C_MPQ_FILENAMES[index] + ": success.");
 				} else {
 					failed = true;
 					console.log("Failed to fetch bundled MPQ " + C_DEFAULT_MPQ_SOURCES[index] + ": " + req.status);
@@ -704,6 +840,8 @@ var first_frame_played = false;
 function start_replay(buffer, length) {
 	
 	$('#top').css('display', 'none');
+	$('#pregame-overlay').css('display', 'none');
+	$('body').removeClass('pregame-active');
 	$('#zoom-buttons').css('display', 'grid');
 	$('#viewport-export').css('display', 'block');
 	$('.widget_replay_viewer_widget').css({
@@ -717,6 +855,7 @@ function start_replay(buffer, length) {
 	let zoom = zoomLevel;
 	zoomLevel = 0;
 	resize_canvas(Module.canvas);
+	update_replay_playlist_controls();
 
 	// For some reason the zoom level can't be correctly on the first resize, so schedule another one if we need to zoom
 	if (zoom !== 0) {
@@ -738,6 +877,12 @@ function start_replay(buffer, length) {
 		if (typeof update_fow_button === "function") {
 			update_fow_button();
 		}
+		if (typeof update_force_red_blue_button === "function") {
+			update_force_red_blue_button();
+		}
+		if (typeof update_player_vision_buttons === "function") {
+			update_player_vision_buttons();
+		}
 	    
 	    _load_replay(buffer, length);
     
@@ -745,24 +890,24 @@ function start_replay(buffer, length) {
     
     players = [];
     for (var i = 0; i != 12; ++i) {
-    	
-        if (_player_get_value(i, C_PLAYER_ACTIVE)) {
-        
-	        var race 				= _player_get_value(i, C_RACE)
-	        var used_supply 		= _player_get_value(i, C_USED_ZERG_SUPPLY + race);
-	        var available_supply 	= _player_get_value(i, C_AVAILABLE_ZERG_SUPPLY + race);
-	        
-	        if (used_supply == 4 && available_supply > 0) {
-	        	console.log(used_supply + " / " + available_supply)
-	        	players.push(i);
-	        	$('.per-player-info' + players.length).show();
-	        }
-        }
+    	if (_player_get_value(i, C_PLAYER_ACTIVE)) {
+	    	players.push(i);
+	    	$('.per-player-info' + players.length).show();
+    	}
     }
     for (var i = players.length + 1; i <= 12; i++) {
     	$('.per-player-info' + i).hide();
     }
     apply_player_row_layout(players.length);
+	if (typeof update_player_vision_buttons === "function") {
+		update_player_vision_buttons();
+	}
+	if (typeof apply_persisted_viewer_toggle_settings === "function") {
+		apply_persisted_viewer_toggle_settings();
+		if (typeof update_player_vision_buttons === "function") {
+			update_player_vision_buttons();
+		}
+	}
 }
 
 function on_read_all_done() {
@@ -776,6 +921,9 @@ function on_read_all_done() {
         start_replay(buf, arr.length);
         _free(buf);
     } else {
+        replayPlaylist = [];
+        replayPlaylistIndex = -1;
+        update_replay_playlist_controls();
         var inputs = {}
         var optstr = document.location.search.substr(1);
         if (optstr) {

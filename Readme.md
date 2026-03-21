@@ -1,7 +1,7 @@
 # openbw-replay-viewer
 Standalone copy of the OpenBW replay viewer webpage (originally/normally hosted at http://www.openbw.com/replay-viewer).
 
-Available on GitHub Pages at https://bmnielsen.github.io/openbw-replay-viewer.
+Available on GitHub Pages at https://dgant.github.io/openbw-replay-viewer.
 
 ## History
 

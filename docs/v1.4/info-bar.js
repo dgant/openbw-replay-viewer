@@ -1,8 +1,10 @@
 const fps = (1000 / 42);
 let volumeSettings = JSON.parse(localStorage.volumeSettings || '{"level":0.5,"muted":false}');
 let zoomLevel = parseInt(localStorage.zoomLevel || '0');
+let viewerToggleSettings = JSON.parse(localStorage.viewerToggleSettings || '{"observerEnabled":true,"fowEnabled":true,"forceRedBlueEnabled":false}');
 let exportState = null;
 let scrubPreviewFrame = null;
+let isDraggingVolumeSlider = false;
 
 jQuery(document).ready( function($) {	
 	
@@ -167,7 +169,6 @@ jQuery(document).ready( function($) {
 			case 88: // x
 				jump_seconds(-30);
 				return false;
-			case 8: // backspace
 			case 67: // c
 				jump_seconds(-10);
 				return false;
@@ -178,25 +179,22 @@ jQuery(document).ready( function($) {
 				jump_seconds(30);
 				return false;
 			case 71: // g
+				toggle_graphs(1);
+				return false;
+			case 74: // j
 				if ($('#goto').is(':visible')) {
 					$('#goto').foundation('close');
 				} else {
 					open_goto_modal();
 				}
 				return false;
-			case 84: // t
+			case 173: // -
+			case 189: // -
 				zoomOut();
 				return false;
-			case 89: // y
+			case 61: // =
+			case 187: // =
 				zoomIn();
-				return false;
-			case 49: // 1
-			case 50: // 2
-			case 51: // 3
-			case 52: // 4
-				return false;
-			case 53: // 5
-				toggle_graphs(1);
 				return false;
 		}			
 		return true;
@@ -215,6 +213,12 @@ jQuery(document).ready( function($) {
 	        scrubPreviewFrame = null;
 	        update_timer(_replay_get_value(2));
 	    }
+		if (isDraggingVolumeSlider) {
+			isDraggingVolumeSlider = false;
+			if (!$('.volume:hover').length) {
+				hide_volume_slider();
+			}
+		}
 	}); 
 	
 	$(window).on('resize', function(){
@@ -260,9 +264,16 @@ jQuery(document).ready( function($) {
 	$('#rv-rc-observer').on('click', function() {
 		toggle_observer();
 	});
+	$('#rv-rc-force-colors').on('click', function() {
+		toggle_force_red_blue_colors();
+	});
 
 	$('#rv-rc-fow').on('click', function() {
 		toggle_fow();
+	});
+	$('[id^="vision"]').on('click', function() {
+		var playerIndex = parseInt(this.id.replace('vision', ''), 10) - 1;
+		toggle_player_vision(playerIndex);
 	});
 	
 	$('#rv-rc-faster').on('click', function() {
@@ -273,6 +284,12 @@ jQuery(document).ready( function($) {
 	$('#rv-rc-export').on('click', function() {
 		start_video_export();
 	});
+	$('#playlist-prev').on('click', function() {
+		load_previous_replay();
+	});
+	$('#playlist-next').on('click', function() {
+		load_next_replay();
+	});
 	
 	$('#rv-rc-slower').on('click', function() {
 		
@@ -280,10 +297,16 @@ jQuery(document).ready( function($) {
 	});
 	
 	$('#rv-rc-sound').mouseenter(function() {
-		$('#volume-slider-wrapper').css("display", "block");
+		show_volume_slider();
 	});
 	$('.volume').mouseleave(function() {
-	    $('#volume-slider-wrapper').css("display", "none");
+		if (!isDraggingVolumeSlider) {
+	    	hide_volume_slider();
+		}
+	});
+	$('#volume-slider, #volume-slider-handle').on('mousedown', function() {
+		isDraggingVolumeSlider = true;
+		show_volume_slider();
 	});
 
 	let volumeInitialized = false;
@@ -343,16 +366,19 @@ jQuery(document).ready( function($) {
 	}
 	
 	document.getElementById('graphs_tab').addEventListener('dragstart',drag_start,false);
-	document.getElementById("canvas").addEventListener('drop', drop, false);
-	update_army_tab([]);
-	$('#volume-slider-wrapper').css("display", "none");
-	update_observer_button();
-	update_fow_button();
-	update_zoom_buttons();
-	apply_infobar_layout();
+document.getElementById("canvas").addEventListener('drop', drop, false);
+update_army_tab([]);
+hide_volume_slider();
+update_observer_button();
+update_fow_button();
+update_force_red_blue_button();
+update_player_vision_buttons();
+update_zoom_buttons();
+apply_infobar_layout();
 })	
 
 function zoomOut() {
+	if (zoomLevel <= -4) return;
 	var nextZoomLevel = zoomLevel - 1;
 	if (!can_zoom_to(nextZoomLevel)) return;
 	zoomLevel = nextZoomLevel;
@@ -362,6 +388,7 @@ function zoomOut() {
 }
 
 function zoomIn() {
+	if (zoomLevel >= 4) return;
 	zoomLevel++;
 	localStorage.zoomLevel = '' + zoomLevel;
 	resize_canvas(Module.canvas);
@@ -399,6 +426,7 @@ function apply_infobar_layout() {
 	var hideOrder = ['hide-apm', 'hide-gas', 'hide-minerals', 'hide-army', 'hide-race', 'hide-workers', 'hide-supply'];
 	var rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 	var widths = {
+		vision: 2 * rootFontSize,
 		race: 2.25 * rootFontSize,
 		supply: 6.5 * rootFontSize,
 		minerals: 4.75 * rootFontSize,
@@ -409,7 +437,7 @@ function apply_infobar_layout() {
 	};
 	var preferredNameWidth = 224;
 	var required_infobar_width = function() {
-		var required = Math.min(preferredNameWidth, infobar.clientWidth || preferredNameWidth);
+		var required = widths.vision + Math.min(preferredNameWidth, infobar.clientWidth || preferredNameWidth);
 		if (!container.classList.contains('hide-race')) required += widths.race;
 		if (!container.classList.contains('hide-supply')) required += widths.supply;
 		if (!container.classList.contains('hide-minerals')) required += widths.minerals;
@@ -420,7 +448,7 @@ function apply_infobar_layout() {
 		return required;
 	};
 	var update_infobar_columns = function() {
-		var columns = [];
+		var columns = ['2rem'];
 		if (!container.classList.contains('hide-race')) columns.push('2.25rem');
 		columns.push((infobar.clientWidth || 0) >= preferredNameWidth ? 'minmax(224px, 1fr)' : 'minmax(0, 1fr)');
 		if (!container.classList.contains('hide-supply')) columns.push('6.5rem');
@@ -488,11 +516,13 @@ function apply_info_strip_scale(parent_element) {
 	}
 	var availableWidth = element.clientWidth || 0;
 	var scale = 4;
-	var tileWidths = { 1: 29, 2: 19, 3: 15, 4: 11 };
+	var isArmyOrTech = /^(army|tech)_tab_content/.test(element.id);
+	var tileWidths = isArmyOrTech ? { 1: 32, 2: 20, 3: 16, 4: 12 } : { 1: 36, 2: 18, 3: 12, 4: 9 };
+	var tileGap = 1;
 	if (availableWidth > 0) {
 		[1, 2, 3, 4].some(function(candidate) {
 			var rows = candidate === 1 ? 1 : candidate;
-			var columns = Math.max(1, Math.floor((availableWidth + 1) / tileWidths[candidate]));
+			var columns = Math.max(1, Math.floor((availableWidth + tileGap) / (tileWidths[candidate] + tileGap)));
 			if (columns * rows >= visibleChildren.length) {
 				scale = candidate;
 				return true;
@@ -561,6 +591,7 @@ function play_faster() {
 function play_slower() {
 	
 	var current_speed = _replay_get_value(0);
+	if (current_speed <= 1 / 128) return;
 	_replay_set_value(0, current_speed / 2);
 	update_speed(current_speed / 2);
 }
@@ -571,6 +602,34 @@ function update_observer_button() {
 		return;
 	}
 	$('#rv-rc-observer').toggleClass('is-enabled', _observer_get_value() !== 0);
+}
+
+function persist_viewer_toggle_settings() {
+	localStorage.viewerToggleSettings = JSON.stringify(viewerToggleSettings);
+}
+
+function apply_persisted_viewer_toggle_settings() {
+	if (!main_has_been_called || typeof Module === "undefined") return;
+	if (typeof Module._observer_set_value === "function") {
+		_observer_set_value(viewerToggleSettings.observerEnabled ? 1 : 0);
+	}
+	if (typeof Module._fog_of_war_set_value === "function") {
+		_fog_of_war_set_value(viewerToggleSettings.fowEnabled ? 1 : 0);
+	}
+	if (typeof Module._force_red_blue_colors_set_value === "function") {
+		_force_red_blue_colors_set_value(viewerToggleSettings.forceRedBlueEnabled ? 1 : 0);
+	}
+	update_observer_button();
+	update_fow_button();
+	update_force_red_blue_button();
+}
+
+function show_volume_slider() {
+	$('#volume-slider-wrapper').css("display", "block");
+}
+
+function hide_volume_slider() {
+	$('#volume-slider-wrapper').css("display", "none");
 }
 
 function update_zoom_buttons() {
@@ -586,16 +645,63 @@ function update_fow_button() {
 	$('#rv-rc-fow').toggleClass('is-enabled', _fog_of_war_get_value() !== 0);
 }
 
+function update_force_red_blue_button() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._force_red_blue_colors_get_value !== "function") {
+		$('#rv-rc-force-colors').toggleClass('is-enabled', false);
+		return;
+	}
+	$('#rv-rc-force-colors').toggleClass('is-enabled', _force_red_blue_colors_get_value() !== 0);
+}
+
 function toggle_observer() {
 	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function" || typeof Module._observer_set_value !== "function") return;
 	_observer_set_value(_observer_get_value() === 0 ? 1 : 0);
+	viewerToggleSettings.observerEnabled = _observer_get_value() !== 0;
+	persist_viewer_toggle_settings();
 	update_observer_button();
 }
 
 function toggle_fow() {
 	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._fog_of_war_get_value !== "function" || typeof Module._fog_of_war_set_value !== "function") return;
 	_fog_of_war_set_value(_fog_of_war_get_value() === 0 ? 1 : 0);
+	viewerToggleSettings.fowEnabled = _fog_of_war_get_value() !== 0;
+	persist_viewer_toggle_settings();
 	update_fow_button();
+	update_player_vision_buttons();
+}
+
+function toggle_force_red_blue_colors() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._force_red_blue_colors_get_value !== "function" || typeof Module._force_red_blue_colors_set_value !== "function") return;
+	_force_red_blue_colors_set_value(_force_red_blue_colors_get_value() === 0 ? 1 : 0);
+	viewerToggleSettings.forceRedBlueEnabled = _force_red_blue_colors_get_value() !== 0;
+	persist_viewer_toggle_settings();
+	update_force_red_blue_button();
+	if (typeof update_info_bar === "function") {
+		first_frame_played = false;
+		update_info_bar(_replay_get_value(2));
+	}
+}
+
+function update_player_vision_buttons() {
+	for (var i = 0; i < 12; ++i) {
+		var button = $('#vision' + (i + 1));
+		if (!button.length) continue;
+		if (!main_has_been_called || typeof Module._fog_of_war_player_get_value !== "function" || i >= players.length) {
+			button.hide();
+			continue;
+		}
+		button.show();
+		button.toggleClass('is-enabled', _fog_of_war_player_get_value(players[i]) !== 0);
+	}
+}
+
+function toggle_player_vision(playerIndex) {
+	if (!main_has_been_called || playerIndex < 0 || playerIndex >= players.length) return;
+	if (typeof Module._fog_of_war_player_get_value !== "function" || typeof Module._fog_of_war_player_set_value !== "function") return;
+	var player = players[playerIndex];
+	var nextValue = _fog_of_war_player_get_value(player) === 0 ? 1 : 0;
+	_fog_of_war_player_set_value(player, nextValue);
+	update_player_vision_buttons();
 }
 
 function toggle_sound() {
@@ -788,8 +894,7 @@ function ensure_paused() {
 }
 
 function update_speed(speed) {
-	
-	document.getElementById("rv-rc-speed").innerHTML = "speed: " + speed + "x";
+	document.getElementById("rv-rc-speed").innerHTML = "speed: " + Number(speed).toFixed(2) + "x";
 }
 
 var IMG_URL1 = "images/production_icons/icon ";
@@ -914,23 +1019,11 @@ function update_tech_tab(upgrades, researches) {
 			set_icon(3, element, slot++, completeUpgrades[j].icon, 1, completeUpgrades[j].level);
 		}
 
-		var incompleteUpgrades = upgrades[i][2];
-		for (var j = 0; j < incompleteUpgrades.length; j++) {
-			var upgradeProgress = 1 - incompleteUpgrades[j].remaining_time / incompleteUpgrades[j].total_time;
-			set_icon(3, element, slot++, incompleteUpgrades[j].icon, upgradeProgress, incompleteUpgrades[j].level);
-		}
-
 		var completeResearch = researches[i][1];
 		for (var j = 0; j < completeResearch.length; j++) {
 			if ($.inArray(completeResearch[j].id, unused_research) == -1) {
 				set_icon(4, element, slot++, completeResearch[j].icon, 1, "");
 			}
-		}
-
-		var incompleteResearch = researches[i][2];
-		for (var j = 0; j < incompleteResearch.length; j++) {
-			var researchProgress = 1 - incompleteResearch[j].remaining_time / incompleteResearch[j].total_time;
-			set_icon(4, element, slot++, incompleteResearch[j].icon, researchProgress, "");
 		}
 
 		for (var j = slot; j < element.children("div").length; ++j) {
@@ -976,7 +1069,7 @@ var productionUnit_compare = function (unit1, unit2) {
 	return (build_time2 - unit2.remaining_build_time)  - (build_time1 - unit1.remaining_build_time);
 }
 
-function update_production_tab(incomplete_units) {
+function update_production_tab(incomplete_units, upgrades, researches) {
 	
 	incomplete_units.sort(productionUnit_compare);
 	
@@ -998,6 +1091,28 @@ function update_production_tab(incomplete_units) {
 		var build_percentage = 1 - u.remaining_build_time / build_time;
 		
 		unit_names[u.owner].push([t, build_percentage]);
+	}
+
+	if (upgrades) {
+		for (var i = 0; i < upgrades.length; ++i) {
+			var incompleteUpgrades = upgrades[i][2];
+			for (var j = 0; j < incompleteUpgrades.length; ++j) {
+				var upgradeProgress = 1 - incompleteUpgrades[j].remaining_time / incompleteUpgrades[j].total_time;
+				unit_names[upgrades[i][0]].push([incompleteUpgrades[j].icon, upgradeProgress]);
+			}
+		}
+	}
+
+	if (researches) {
+		for (var i = 0; i < researches.length; ++i) {
+			var incompleteResearch = researches[i][2];
+			for (var j = 0; j < incompleteResearch.length; ++j) {
+				if ($.inArray(incompleteResearch[j].id, unused_research) == -1) {
+					var researchProgress = 1 - incompleteResearch[j].remaining_time / incompleteResearch[j].total_time;
+					unit_names[researches[i][0]].push([incompleteResearch[j].icon, researchProgress]);
+				}
+			}
+		}
 	}
 	
 	var element;
@@ -1100,6 +1215,11 @@ function set_color(player, color) {
 	case 11:
 		rgb_color = "rgba(64, 104, 212, 1)";
 		break;
+	}
+	var forcedRedBlue = main_has_been_called && typeof Module._force_red_blue_colors_get_value === "function" && _force_red_blue_colors_get_value() !== 0 && players.length === 2;
+	if (forcedRedBlue) {
+		if (player === 1) rgb_color = "rgba(244, 4, 4, 1)";
+		else if (player === 2) rgb_color = "rgba(12, 72, 204, 1)";
 	}
 	// infoChart.data.datasets[(player-1) * 4].borderColor = rgb_color;
 	// infoChart.data.datasets[(player-1) * 4 + 1].borderColor = rgb_color;
