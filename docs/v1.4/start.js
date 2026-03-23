@@ -53,6 +53,7 @@ var replayPlaylist = [];
 var replayPlaylistIndex = -1;
 var remoteReplayStatus = null;
 var query_params = new URLSearchParams(window.location.search);
+var requestedCameraMode = query_params.get('camera') === 'v3' ? 3 : 2;
 var embeddedReplayConfig = {
 	enabled: query_params.get('embedded') === '1',
 	playerFilter: (query_params.get('player') || '').trim().toLowerCase(),
@@ -370,6 +371,7 @@ function add_drag_and_drop_listeners(element, canvas) {
 function install_mobile_camera_controls(canvas) {
 	if (!canvas) return;
 	var touchState = null;
+	var suppressMouseUntil = 0;
 	var isTouchViewport = function() {
 		return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 	};
@@ -398,6 +400,7 @@ function install_mobile_camera_controls(canvas) {
 		var touch = e.touches[0];
 		var rect = canvas.getBoundingClientRect();
 		if (isMinimapTouch(touch.clientX, touch.clientY, rect)) return;
+		suppressMouseUntil = Date.now() + 700;
 		touchState = {
 			startX: touch.clientX,
 			startY: touch.clientY,
@@ -408,11 +411,13 @@ function install_mobile_camera_controls(canvas) {
 	}, { passive: false });
 	canvas.addEventListener("touchmove", function(e) {
 		if (!touchState || !isTouchViewport() || !e.touches.length) return;
+		suppressMouseUntil = Date.now() + 700;
 		updateCameraFromTouch(e.touches[0].clientX, e.touches[0].clientY);
 		e.preventDefault();
 	}, { passive: false });
 	canvas.addEventListener("touchend", function(e) {
 		if (!touchState || !isTouchViewport()) return;
+		suppressMouseUntil = Date.now() + 700;
 		if (e.changedTouches.length) {
 			updateCameraFromTouch(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
 		}
@@ -422,6 +427,14 @@ function install_mobile_camera_controls(canvas) {
 	canvas.addEventListener("touchcancel", function() {
 		touchState = null;
 	}, { passive: true });
+	["mousedown", "mouseup", "click", "dblclick", "contextmenu"].forEach(function(type) {
+		canvas.addEventListener(type, function(e) {
+			if (!isTouchViewport()) return;
+			if (Date.now() >= suppressMouseUntil) return;
+			e.preventDefault();
+			e.stopPropagation();
+		}, true);
+	});
 }
 
 /*****************************
@@ -1189,6 +1202,9 @@ function start_replay(buffer, length) {
 	    	main_has_been_called = true;
 			Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
 	    }
+		if (typeof Module._observer_set_mode === "function") {
+			_observer_set_mode(requestedCameraMode);
+		}
 		if (typeof update_observer_button === "function") {
 			update_observer_button();
 		}
