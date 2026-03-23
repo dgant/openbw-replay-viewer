@@ -6909,7 +6909,7 @@ body#tinymce {
   padding-bottom: 2rem; }
 
 .pregame-screen.pregame-loading .pregame-dropzone {
-  width: min(52rem, calc(100% - 2rem));
+  width: min(68rem, calc(100% - 2rem));
   min-height: auto;
   border: 0;
   background: transparent;
@@ -6921,11 +6921,12 @@ body#tinymce {
   color: #f4f6fa; }
 
 .pregame-status-message {
-  width: min(100%, 42rem);
+  width: min(100%, 60rem);
   margin-top: 0.75rem;
   font-size: 0.98rem;
   line-height: 1.55;
   color: #d7dde6;
+  overflow-wrap: anywhere;
   word-break: break-word; }
 
 .pregame-drop-copy {
@@ -7155,11 +7156,9 @@ body#tinymce {
     .replay-control .rv-rc-controls div .rv-rc-slower {
       background-image: url("images/player_icons/slower.svg"); }
     .replay-control .rv-rc-controls div .rv-rc-next-embedded {
-      background-image: url("images/player_icons/faster.svg");
-      background-color: #ffd36c;
-      border-radius: 4px;
+      background-image: url("images/player_icons/fast-forward.svg");
       background-position: center;
-      background-size: 22px 22px; }
+      background-size: contain; }
 
 .bottom-info-dock {
   -webkit-box-flex: 0;
