@@ -6898,6 +6898,36 @@ body#tinymce {
   text-align: center;
   background: rgba(255, 255, 255, 0.03); }
 
+.pregame-dropzone-status {
+  justify-content: center;
+  align-items: center;
+  text-align: center; }
+
+.pregame-screen.pregame-loading {
+  grid-template-rows: 1fr;
+  place-items: center;
+  padding-bottom: 2rem; }
+
+.pregame-screen.pregame-loading .pregame-dropzone {
+  width: min(52rem, calc(100% - 2rem));
+  min-height: auto;
+  border: 0;
+  background: transparent;
+  padding: 0; }
+
+.pregame-status-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f4f6fa; }
+
+.pregame-status-message {
+  width: min(100%, 42rem);
+  margin-top: 0.75rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: #d7dde6;
+  word-break: break-word; }
+
 .pregame-drop-copy {
   font-size: 1.9rem;
   font-weight: 700;
@@ -6945,7 +6975,7 @@ body#tinymce {
   .pregame-notes li {
     margin-bottom: 0.35rem; }
   .pregame-notes a {
-    color: #7cc4ff;
+    color: #2199e8;
     text-decoration: underline;
     text-underline-offset: 0.12em; }
 
@@ -7070,27 +7100,41 @@ body#tinymce {
       margin: 15px 0px 0px 0px; }
   .replay-control .rv-rc-timer {
     padding: 0px 0px 0px 0px;
-    background-color: #2e2e34;
+    background-color: #181b22;
     font-weight: bold;
     font-size: 0.8rem;
     text-align: left;
     color: white; }
     .replay-control .rv-rc-timer.scrub-preview {
       color: #ffd36c; }
-  .replay-control .rv-rc-controls {
+.replay-control .rv-rc-controls {
     padding: 0;
     background-color: #181b22;
     height: 40px;
     display: flex;
-    align-items: center; }
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative; }
     .replay-control .rv-rc-controls > div {
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100%; }
+      height: 100%;
+      -webkit-box-flex: 0;
+          -ms-flex: 0 0 36px;
+              flex: 0 0 36px;
+      width: 36px;
+      min-width: 36px;
+      max-width: none;
+      padding: 0;
+      float: none; }
+    .replay-control .rv-rc-controls #rv-rc-next-embedded-wrap {
+      position: static;
+      width: 36px; }
     .replay-control .rv-rc-controls .volume {
       position: relative; }
-    .replay-control .rv-rc-controls div .rv-rc-play, .replay-control .rv-rc-controls div .rv-rc-sound, .replay-control .rv-rc-controls div .rv-rc-muted, .replay-control .rv-rc-controls div .rv-rc-pause, .replay-control .rv-rc-controls div .rv-rc-faster, .replay-control .rv-rc-controls div .rv-rc-slower {
+    .replay-control .rv-rc-controls div .rv-rc-play, .replay-control .rv-rc-controls div .rv-rc-sound, .replay-control .rv-rc-controls div .rv-rc-muted, .replay-control .rv-rc-controls div .rv-rc-pause, .replay-control .rv-rc-controls div .rv-rc-faster, .replay-control .rv-rc-controls div .rv-rc-slower, .replay-control .rv-rc-controls div .rv-rc-next-embedded {
       padding: 0px;
       margin: 0px;
       display: block;
@@ -7110,6 +7154,12 @@ body#tinymce {
       background-image: url("images/player_icons/faster.svg"); }
     .replay-control .rv-rc-controls div .rv-rc-slower {
       background-image: url("images/player_icons/slower.svg"); }
+    .replay-control .rv-rc-controls div .rv-rc-next-embedded {
+      background-image: url("images/player_icons/faster.svg");
+      background-color: #ffd36c;
+      border-radius: 4px;
+      background-position: center;
+      background-size: 22px 22px; }
 
 .bottom-info-dock {
   -webkit-box-flex: 0;
@@ -7117,7 +7167,7 @@ body#tinymce {
           flex: 0 0 430px;
   min-width: 430px;
   border-left: 1px solid #181b22;
-  background-color: #22262f;
+  background-color: #2e2e34;
   overflow: hidden; }
   .bottom-info-dock #info_tab {
     position: static;
@@ -7154,19 +7204,25 @@ body#tinymce {
   position: absolute;
   bottom: 38px;
   z-index: 20;
-  left: calc(50% - 2.5px);
+  left: 50%;
+  transform: translateX(-50%);
   width: 40px;
-  margin-left: -17.5px;
   padding-top: 20px;
   padding-bottom: 0;
   overflow: visible; }
   #volume-slider-wrapper div {
     position: relative;
-    right: 6px; }
+    right: 0; }
   #volume-slider-wrapper #volume-slider {
+    position: relative;
+    left: 50%;
+    -webkit-transform: translateX(-50%) scale(1, -1);
+        -ms-transform: translateX(-50%) scale(1, -1);
+            transform: translateX(-50%) scale(1, -1);
+    display: block;
     width: 8px;
     height: 120px;
-    margin: 0 auto; }
+    margin: 0; }
   #volume-slider-wrapper #volume-slider .slider-fill {
     width: 8px; }
 
@@ -7228,8 +7284,9 @@ body.pregame-active #info-dock .info-dock-header {
     color: #eef3fa;
     border-color: #2b3442; }
   .reveal .button {
-    background: #2c7be5;
-    color: #ffffff; }
+    background: #181b22;
+    color: #eef3fa;
+    border: 1px solid #2b3442; }
 
 #quick_help table thead {
   display: none; }
@@ -7389,6 +7446,7 @@ body.pregame-active #info-dock .info-dock-header {
     padding: 0;
     border: none;
     background: transparent;
+    color: #8e9daf;
     position: relative; }
     #infobar .rv_ib_vision::before,
     #infobar .rv_ib_vision::after {
@@ -7407,9 +7465,11 @@ body.pregame-active #info-dock .info-dock-header {
       background: #8e9daf;
       border-radius: 50%; }
     #infobar .rv_ib_vision.is-enabled::before {
-      border-color: #7cc4ff; }
+      border-color: #2199e8; }
     #infobar .rv_ib_vision.is-enabled::after {
-      background: #7cc4ff; }
+      background: #2199e8; }
+    #infobar .rv_ib_vision.is-enabled {
+      color: #2199e8; }
   #infobar .infobar-text .rv_ib_vision {
     width: 0;
     height: 0;
@@ -7440,8 +7500,8 @@ body.pregame-active #info-dock .info-dock-header {
     text-overflow: ellipsis; }
 
 .bottom-info-dock {
-  flex: 0 0 760px;
-  min-width: 760px;
+  flex: 0 0 820px;
+  min-width: 820px;
   border-left: 0;
   border-right: 0;
   padding-left: 0;
@@ -7517,8 +7577,9 @@ body.pregame-active #info-dock .info-dock-header {
     margin-right: 0; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content {
     --tile-width: 36px;
-    --tile-height: 39px;
-    --tile-image-height: 34px;
+    --tile-height: 35px;
+    --tile-image-height: 30px;
+    --tile-bar-height: 4px;
     --tile-badge-font: 0.65rem;
     --tile-badge-width: 0.9rem;
     --tile-bar-max: 36px;
@@ -7528,64 +7589,67 @@ body.pregame-active #info-dock .info-dock-header {
     flex-wrap: nowrap;
     align-items: flex-start;
     gap: 1px;
-    overflow: hidden; }
+    overflow: hidden;
+    padding: 1px; }
   .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content,
   .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content {
     --tile-width: 38px;
     --tile-height: 38px;
     --tile-image-height: 38px;
+    --tile-bar-height: 0px;
     --tile-bar-max: 0px; }
   .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content[data-scale="2"],
   .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content[data-scale="2"] {
-    --tile-width: 20px;
-    --tile-height: 20px;
-    --tile-image-height: 20px; }
+    --tile-width: 18px;
+    --tile-height: 18px;
+    --tile-image-height: 18px;
+    --tile-bar-height: 0px; }
   .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content[data-scale="3"],
   .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content[data-scale="3"] {
-    --tile-width: 16px;
-    --tile-height: 16px;
-    --tile-image-height: 16px; }
-  .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content[data-scale="4"],
-  .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content[data-scale="4"] {
     --tile-width: 12px;
     --tile-height: 12px;
-    --tile-image-height: 12px; }
+    --tile-image-height: 12px;
+    --tile-bar-height: 0px; }
+  .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content[data-scale="4"],
+  .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content[data-scale="4"] {
+    --tile-width: 9px;
+    --tile-height: 9px;
+    --tile-image-height: 9px;
+    --tile-bar-height: 0px; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="2"] {
-    --tile-width: 18px;
-    --tile-height: 23px;
-    --tile-image-height: 18px;
+    --tile-width: 17px;
+    --tile-height: 18px;
+    --tile-image-height: 14px;
+    --tile-bar-height: 3px;
     --tile-badge-font: 0.5rem;
     --tile-badge-width: 0.65rem;
-    --tile-bar-max: 18px; }
+    --tile-bar-max: 17px; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="3"] {
     --tile-width: 12px;
-    --tile-height: 17px;
-    --tile-image-height: 12px;
+    --tile-height: 12px;
+    --tile-image-height: 8px;
+    --tile-bar-height: 2px;
     --tile-badge-font: 0.42rem;
     --tile-badge-width: 0.55rem;
     --tile-bar-max: 12px; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="4"] {
     --tile-width: 9px;
-    --tile-height: 14px;
-    --tile-image-height: 9px;
+    --tile-height: 9px;
+    --tile-image-height: 6px;
+    --tile-bar-height: 1px;
     --tile-badge-font: 0.34rem;
     --tile-badge-width: 0.45rem;
     --tile-bar-max: 9px; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="2"],
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="3"],
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="4"] {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: var(--tile-width);
-    column-gap: 1px;
-    row-gap: 1px;
+    display: flex;
+    flex-wrap: wrap;
     align-content: start; }
-  .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="2"] {
-    grid-template-rows: repeat(2, var(--tile-height)); }
-  .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="3"] {
-    grid-template-rows: repeat(3, var(--tile-height)); }
-  .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="4"] {
-    grid-template-rows: repeat(4, var(--tile-height)); }
+  .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="dynamic"] {
+    display: flex;
+    flex-wrap: nowrap;
+    align-content: start; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content > div:not([style*="display: none"]) {
     flex: 0 0 auto;
     display: inline-block !important;
@@ -7612,6 +7676,7 @@ body.pregame-active #info-dock .info-dock-header {
     background-color: #2e2e34;
     text-align: center; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel div .info_tab_content .prod_prog_bar {
+    height: var(--tile-bar-height);
     max-width: var(--tile-bar-max);
     overflow: hidden; }
   .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content > div {
@@ -7624,26 +7689,49 @@ body.pregame-active #info-dock .info-dock-header {
     display: none !important; }
   .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content .prod_prog_bar {
     display: none !important; }
-#viewport-export .rv-rc-export {
+#viewport-export {
+  display: grid;
+  grid-template-columns: repeat(2, 40px);
+  gap: 8px; }
+
+#viewport-export .rv-rc-export,
+#viewport-export .rv-rc-export-settings {
   padding: 0;
   margin: 0;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 40px;
   width: 40px;
   background-image: none;
-  color: #cfe3ff;
-  border: 1px solid #5078b8;
   border-radius: 4px;
-  background-color: rgba(32, 48, 76, 0.9); }
+  background-color: rgba(35, 40, 49, 0.92);
+  border: 1px solid #4d5564;
+  color: #d0d4de; }
+  #viewport-export .rv-rc-export-settings::before {
+    content: "\f013";
+    font-family: 'FontAwesome';
+    font-size: 18px;
+    line-height: 1; }
   #viewport-export .rv-rc-export::before {
     content: "\f03d";
     font-family: 'FontAwesome';
     font-size: 18px;
-    line-height: 38px; }
+    line-height: 1; }
+  #viewport-export .button.success.small {
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    box-shadow: none; }
   #viewport-export .rv-rc-export.is-exporting {
-    color: #ffd36c;
-    border-color: #ffd36c;
-    background-color: rgba(63, 51, 32, 0.95); }
+    color: #ff8d8d;
+    border-color: #ff6f6f;
+    background-color: rgba(73, 26, 30, 0.95); }
+  #viewport-export .rv-rc-export.is-exporting::before {
+    content: "\25A0";
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 38px; }
 
 #zoom-buttons {
   grid-template-columns: repeat(2, 40px);
@@ -7772,6 +7860,59 @@ body.pregame-active #info-dock .info-dock-header {
 
 .reveal-overlay.rv-modal-overlay-clear {
   background-color: transparent; }
+
+#export_settings {
+  max-width: 28rem; }
+  #export_settings h3 {
+    margin-right: 2rem; }
+  #export_settings .close-button {
+    top: 0.85rem; }
+  #export_settings .input-group {
+    display: inline-flex;
+    width: auto;
+    align-items: center;
+    margin-bottom: 0.75rem; }
+  #export_settings .input-group-label {
+    min-width: 4.5rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: #9aa9bd;
+    text-align: left;
+    justify-content: flex-start; }
+  #export_settings .input-group-label:last-child {
+    width: auto;
+    min-width: 0;
+    -webkit-box-flex: 0;
+        -ms-flex: 0 0 auto;
+            flex: 0 0 auto;
+    margin-left: 0.4rem;
+    justify-content: flex-start; }
+  #export_settings .input-group-field {
+    background: rgba(255, 255, 255, 0.04);
+    border: 0;
+    border-bottom: 1px solid #50617a;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+    box-shadow: none;
+    max-width: 7ch;
+    min-width: 7ch;
+    flex: 0 0 7ch;
+    text-align: left; }
+  #export_settings .input-group-field:focus {
+    background: rgba(255, 255, 255, 0.07);
+    border-bottom-color: #7cc4ff; }
+  #export_settings .button-group {
+    justify-content: flex-end;
+    margin-top: 1rem; }
+  #export_settings .button-group .button.success {
+    background-color: #3adb76;
+    color: #fff;
+    border-color: transparent; }
+  #export_settings .button-group .button.success:hover,
+  #export_settings .button-group .button.success:focus {
+    background-color: #22bb5b;
+    color: #fff; }
 
 #rv_modal.rv-modal-bottom {
   top: auto !important;

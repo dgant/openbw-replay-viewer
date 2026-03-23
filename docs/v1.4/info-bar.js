@@ -5,6 +5,147 @@ let viewerToggleSettings = JSON.parse(localStorage.viewerToggleSettings || '{"ob
 let exportState = null;
 let scrubPreviewFrame = null;
 let isDraggingVolumeSlider = false;
+let exportSettings = load_export_settings();
+const UNITTYPES_DISPLAY_NAMES = ["Terran Marine", "Terran Ghost", "Terran Vulture", "Terran Goliath", "Terran Goliath Turret", "Terran Siege Tank Tank Mode", "Terran Siege Tank Tank Mode Turret", "Terran SCV", "Terran Wraith", "Terran Science Vessel", "Hero Gui Montag", "Terran Dropship", "Terran Battlecruiser", "Terran Vulture Spider Mine", "Terran Nuclear Missile", "Terran Civilian", "Hero Sarah Kerrigan", "Hero Alan Schezar", "Hero Alan Schezar Turret", "Hero Jim Raynor Vulture", "Hero Jim Raynor Marine", "Hero Tom Kazansky", "Hero Magellan", "Hero Edmund Duke Tank Mode", "Hero Edmund Duke Tank Mode Turret", "Hero Edmund Duke Siege Mode", "Hero Edmund Duke Siege Mode Turret", "Hero Arcturus Mengsk", "Hero Hyperion", "Hero Norad II", "Terran Siege Tank Siege Mode", "Terran Siege Tank Siege Mode Turret", "Terran Firebat", "Spell Scanner Sweep", "Terran Medic", "Zerg Larva", "Zerg Egg", "Zerg Zergling", "Zerg Hydralisk", "Zerg Ultralisk", "Zerg Broodling", "Zerg Drone", "Zerg Overlord", "Zerg Mutalisk", "Zerg Guardian", "Zerg Queen", "Zerg Defiler", "Zerg Scourge", "Hero Torrasque", "Hero Matriarch", "Zerg Infested Terran", "Hero Infested Kerrigan", "Hero Unclean One", "Hero Hunter Killer", "Hero Devouring One", "Hero Kukulza Mutalisk", "Hero Kukulza Guardian", "Hero Yggdrasill", "Terran Valkyrie", "Zerg Cocoon", "Protoss Corsair", "Protoss Dark Templar", "Zerg Devourer", "Protoss Dark Archon", "Protoss Probe", "Protoss Zealot", "Protoss Dragoon", "Protoss High Templar", "Protoss Archon", "Protoss Shuttle", "Protoss Scout", "Protoss Arbiter", "Protoss Carrier", "Protoss Interceptor", "Hero Dark Templar", "Hero Zeratul", "Hero Tassadar Zeratul Archon", "Hero Fenix Zealot", "Hero Fenix Dragoon", "Hero Tassadar", "Hero Mojo", "Hero Warbringer", "Hero Gantrithor", "Protoss Reaver", "Protoss Observer", "Protoss Scarab", "Hero Danimoth", "Hero Aldaris", "Hero Artanis", "Critter Rhynadon", "Critter Bengalaas", "Special Cargo Ship", "Special Mercenary Gunship", "Critter Scantid", "Critter Kakaru", "Critter Ragnasaur", "Critter Ursadon", "Zerg Lurker Egg", "Hero Raszagal", "Hero Samir Duran", "Hero Alexei Stukov", "Special Map Revealer", "Hero Gerard DuGalle", "Zerg Lurker", "Hero Infested Duran", "Spell Disruption Web", "Terran Command Center", "Terran Comsat Station", "Terran Nuclear Silo", "Terran Supply Depot", "Terran Refinery", "Terran Barracks", "Terran Academy", "Terran Factory", "Terran Starport", "Terran Control Tower", "Terran Science Facility", "Terran Covert Ops", "Terran Physics Lab", "Unused Terran1", "Terran Machine Shop", "Unused Terran2", "Terran Engineering Bay", "Terran Armory", "Terran Missile Turret", "Terran Bunker", "Special Crashed Norad II", "Special Ion Cannon", "Powerup Uraj Crystal", "Powerup Khalis Crystal", "Zerg Infested Command Center", "Zerg Hatchery", "Zerg Lair", "Zerg Hive", "Zerg Nydus Canal", "Zerg Hydralisk Den", "Zerg Defiler Mound", "Zerg Greater Spire", "Zerg Queens Nest", "Zerg Evolution Chamber", "Zerg Ultralisk Cavern", "Zerg Spire", "Zerg Spawning Pool", "Zerg Creep Colony", "Zerg Spore Colony", "Unused Zerg1", "Zerg Sunken Colony", "Special Overmind With Shell", "Special Overmind", "Zerg Extractor", "Special Mature Chrysalis", "Special Cerebrate", "Special Cerebrate Daggoth", "Unused Zerg2", "Protoss Nexus", "Protoss Robotics Facility", "Protoss Pylon", "Protoss Assimilator", "Unused Protoss1", "Protoss Observatory", "Protoss Gateway", "Unused Protoss2", "Protoss Photon Cannon", "Protoss Citadel of Adun", "Protoss Cybernetics Core", "Protoss Templar Archives", "Protoss Forge", "Protoss Stargate", "Special Stasis Cell Prison", "Protoss Fleet Beacon", "Protoss Arbiter Tribunal", "Protoss Robotics Support Bay", "Protoss Shield Battery", "Special Khaydarin Crystal Form", "Special Protoss Temple", "Special XelNaga Temple", "Resource Mineral Field", "Resource Mineral Field Type 2", "Resource Mineral Field Type 3", "Unused Cave", "Unused Cave In", "Unused Cantina", "Unused Mining Platform", "Unused Independant Command Center", "Special Independant Starport", "Unused Independant Jump Gate", "Unused Ruins", "Unused Khaydarin Crystal Formation", "Resource Vespene Geyser", "Special Warp Gate", "Special Psi Disrupter", "Unused Zerg Marker", "Unused Terran Marker", "Unused Protoss Marker", "Special Zerg Beacon", "Special Terran Beacon", "Special Protoss Beacon", "Special Zerg Flag Beacon", "Special Terran Flag Beacon", "Special Protoss Flag Beacon", "Special Power Generator", "Special Overmind Cocoon", "Spell Dark Swarm", "Special Floor Missile Trap", "Special Floor Hatch", "Special Upper Level Door", "Special Right Upper Level Door", "Special Pit Door", "Special Right Pit Door", "Special Floor Gun Trap", "Special Wall Missile Trap", "Special Wall Flame Trap", "Special Right Wall Missile Trap", "Special Right Wall Flame Trap", "Special Start Location", "Powerup Flag", "Powerup Young Chrysalis", "Powerup Psi Emitter", "Powerup Data Disk", "Powerup Khaydarin Crystal", "Powerup Mineral Cluster Type 1", "Powerup Mineral Cluster Type 2", "Powerup Protoss Gas Orb Type 1", "Powerup Protoss Gas Orb Type 2", "Powerup Zerg Gas Sac Type 1", "Powerup Zerg Gas Sac Type 2", "Powerup Terran Gas Tank Type 1", "Powerup Terran Gas Tank Type 2", "None"];
+const UPGRADETYPES_DISPLAY_NAMES = ["Terran Infantry Armor", "Terran Vehicle Plating", "Terran Ship Plating", "Zerg Carapace", "Zerg Flyer Carapace", "Protoss Ground Armor", "Protoss Air Armor", "Terran Infantry Weapons", "Terran Vehicle Weapons", "Terran Ship Weapons", "Zerg Melee Attacks", "Zerg Missile Attacks", "Zerg Flyer Attacks", "Protoss Ground Weapons", "Protoss Air Weapons", "Protoss Plasma Shields", "U 238 Shells", "Ion Thrusters", "Unknown 18", "Titan Reactor", "Ocular Implants", "Moebius Reactor", "Apollo Reactor", "Colossus Reactor", "Ventral Sacs", "Antennae", "Pneumatized Carapace", "Metabolic Boost", "Adrenal Glands", "Muscular Augments", "Grooved Spines", "Gamete Meiosis", "Metasynaptic Node", "Singularity Charge", "Leg Enhancements", "Scarab Damage", "Reaver Capacity", "Gravitic Drive", "Sensor Array", "Gravitic Boosters", "Khaydarin Amulet", "Apial Sensors", "Gravitic Thrusters", "Carrier Capacity", "Khaydarin Core", "Unknown 45", "Unknown 46", "Argus Jewel", "Unknown 48", "Argus Talisman", "Unknown 50", "Caduceus Reactor", "Chitinous Plating", "Anabolic Synthesis", "Charon Boosters"];
+const TECHTYPES_DISPLAY_NAMES = ["Stim Packs", "Lockdown", "EMP Shockwave", "Spider Mines", "Scanner Sweep", "Tank Siege Mode", "Defensive Matrix", "Irradiate", "Yamato Gun", "Cloaking Field", "Personnel Cloaking", "Burrowing", "Infestation", "Spawn Broodlings", "Dark Swarm", "Plague", "Consume", "Ensnare", "Parasite", "Psionic Storm", "Hallucination", "Recall", "Stasis Field", "Archon Warp", "Restoration", "Disruption Web", "Unused 26", "Mind Control", "Dark Archon Meld", "Feedback", "Optical Flare", "Maelstrom", "Lurker Aspect", "Unused 33", "Healing"];
+
+function sanitize_positive_integer(value, fallback) {
+	var parsed = parseInt(value, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function sanitize_positive_decimal(value, fallback) {
+	var parsed = parseFloat(value);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function base_export_settings() {
+	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
+	return {
+		width: sanitize_positive_integer(config.width, 1920),
+		height: sanitize_positive_integer(config.height, 1080),
+		fps: sanitize_positive_integer(config.fps, 24),
+		videoBitrateMbps: sanitize_positive_decimal(config.videoBitrateMbps, 12),
+		replaySpeed: sanitize_positive_integer(config.replaySpeed, 1024),
+		pollIntervalMs: sanitize_positive_integer(config.pollIntervalMs, 100),
+		extension: config.extension || 'webm',
+		mimeTypes: config.mimeTypes || ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'],
+		modalTitle: config.modalTitle || "Exporting video",
+		modalMessage: config.modalMessage || "Recording replay to WebM from the opening frame at maximum replay speed."
+	};
+}
+
+function display_name_for_icon(category, id) {
+	if (category === 'unit') return UNITTYPES_DISPLAY_NAMES[id] || 'Unknown unit';
+	if (category === 'upgrade') return UPGRADETYPES_DISPLAY_NAMES[id] || 'Unknown upgrade';
+	if (category === 'tech') return TECHTYPES_DISPLAY_NAMES[id] || 'Unknown research';
+	return '';
+}
+
+function format_clip_timestamp(frame) {
+	var totalSeconds = Math.max(0, Math.floor(frame * 42 / 1000));
+	var hours = Math.floor(totalSeconds / 3600);
+	var minutes = Math.floor((totalSeconds % 3600) / 60);
+	var seconds = totalSeconds % 60;
+	if (hours > 0) {
+		return hours + 'h' + String(minutes).padStart(2, '0') + 'm' + String(seconds).padStart(2, '0') + 's';
+	}
+	return String(minutes).padStart(2, '0') + 'm' + String(seconds).padStart(2, '0') + 's';
+}
+
+function current_replay_player_names() {
+	var names = [];
+	for (var i = 0; i < players.length; ++i) {
+		var nickElement = document.getElementById('nick' + (i + 1));
+		if (!nickElement) continue;
+		var fullName = nickElement.dataset.fullName || nickElement.textContent || '';
+		if (fullName) names.push(fullName.trim());
+	}
+	return names.length ? names : ['openbw-replay'];
+}
+
+function load_export_settings() {
+	var defaults = base_export_settings();
+	try {
+		var saved = JSON.parse(localStorage.exportSettings || '{}');
+		return {
+			width: sanitize_positive_integer(saved.width, defaults.width),
+			height: sanitize_positive_integer(saved.height, defaults.height),
+			fps: sanitize_positive_integer(saved.fps, defaults.fps),
+			videoBitrateMbps: sanitize_positive_decimal(saved.videoBitrateMbps, defaults.videoBitrateMbps)
+		};
+	} catch (error) {
+		return {
+			width: defaults.width,
+			height: defaults.height,
+			fps: defaults.fps,
+			videoBitrateMbps: defaults.videoBitrateMbps
+		};
+	}
+}
+
+function current_export_settings() {
+	var defaults = base_export_settings();
+	return {
+		width: sanitize_positive_integer(exportSettings.width, defaults.width),
+		height: sanitize_positive_integer(exportSettings.height, defaults.height),
+		fps: sanitize_positive_integer(exportSettings.fps, defaults.fps),
+		videoBitrateMbps: sanitize_positive_decimal(exportSettings.videoBitrateMbps, defaults.videoBitrateMbps),
+		replaySpeed: defaults.replaySpeed,
+		pollIntervalMs: defaults.pollIntervalMs,
+		extension: defaults.extension,
+		mimeTypes: defaults.mimeTypes,
+		modalTitle: defaults.modalTitle,
+		modalMessage: defaults.modalMessage
+	};
+}
+
+function persist_export_settings() {
+	localStorage.exportSettings = JSON.stringify({
+		width: exportSettings.width,
+		height: exportSettings.height,
+		fps: exportSettings.fps,
+		videoBitrateMbps: exportSettings.videoBitrateMbps
+	});
+}
+
+function populate_export_settings_form() {
+	var settings = current_export_settings();
+	$('#export-width').val(settings.width);
+	$('#export-height').val(settings.height);
+	$('#export-fps').val(settings.fps);
+	$('#export-bitrate').val(Number(settings.videoBitrateMbps).toFixed(1).replace(/\.0$/, ''));
+}
+
+function save_export_settings_from_form() {
+	var defaults = base_export_settings();
+	exportSettings = {
+		width: sanitize_positive_integer($('#export-width').val(), defaults.width),
+		height: sanitize_positive_integer($('#export-height').val(), defaults.height),
+		fps: sanitize_positive_integer($('#export-fps').val(), defaults.fps),
+		videoBitrateMbps: sanitize_positive_decimal($('#export-bitrate').val(), defaults.videoBitrateMbps)
+	};
+	persist_export_settings();
+	populate_export_settings_form();
+}
+
+function reset_export_settings_to_defaults() {
+	var defaults = base_export_settings();
+	exportSettings = {
+		width: defaults.width,
+		height: defaults.height,
+		fps: defaults.fps,
+		videoBitrateMbps: defaults.videoBitrateMbps
+	};
+	delete localStorage.exportSettings;
+	populate_export_settings_form();
+}
+
+function open_export_settings_modal() {
+	populate_export_settings_form();
+	$('#export_settings').foundation('open');
+}
 
 jQuery(document).ready( function($) {	
 	
@@ -196,6 +337,12 @@ jQuery(document).ready( function($) {
 			case 187: // =
 				zoomIn();
 				return false;
+			case 33: // PageUp
+				load_previous_replay();
+				return false;
+			case 34: // PageDown
+				load_next_replay();
+				return false;
 		}			
 		return true;
 	});
@@ -282,13 +429,32 @@ jQuery(document).ready( function($) {
 	});
 
 	$('#rv-rc-export').on('click', function() {
-		start_video_export();
+		if (exportState) {
+			stop_video_export();
+		} else {
+			start_video_export();
+		}
+	});
+	$('#rv-rc-export-settings').on('click', function() {
+		open_export_settings_modal();
+	});
+	$('#export-settings-save').on('click', function() {
+		save_export_settings_from_form();
+		$('#export_settings').foundation('close');
+	});
+	$('#export-settings-reset').on('click', function() {
+		reset_export_settings_to_defaults();
 	});
 	$('#playlist-prev').on('click', function() {
 		load_previous_replay();
 	});
 	$('#playlist-next').on('click', function() {
 		load_next_replay();
+	});
+	$('#rv-rc-next-embedded').on('click', function() {
+		if (!embeddedReplayConfig.enabled || !embeddedReplayState.currentGameKey) return;
+		embeddedReplayState.watchedKeys[embeddedReplayState.currentGameKey] = true;
+		load_next_embedded_replay();
 	});
 	
 	$('#rv-rc-slower').on('click', function() {
@@ -375,6 +541,7 @@ update_force_red_blue_button();
 update_player_vision_buttons();
 update_zoom_buttons();
 apply_infobar_layout();
+populate_export_settings_form();
 })	
 
 function zoomOut() {
@@ -448,15 +615,34 @@ function apply_infobar_layout() {
 		return required;
 	};
 	var update_infobar_columns = function() {
-		var columns = ['2rem'];
-		if (!container.classList.contains('hide-race')) columns.push('2.25rem');
-		columns.push((infobar.clientWidth || 0) >= preferredNameWidth ? 'minmax(224px, 1fr)' : 'minmax(0, 1fr)');
-		if (!container.classList.contains('hide-supply')) columns.push('6.5rem');
-		if (!container.classList.contains('hide-minerals')) columns.push('4.75rem');
-		if (!container.classList.contains('hide-gas')) columns.push('3.75rem');
-		if (!container.classList.contains('hide-workers')) columns.push('4.25rem');
-		if (!container.classList.contains('hide-army')) columns.push('3.75rem');
-		if (!container.classList.contains('hide-apm')) columns.push('4.5rem');
+		var infobarWidth = infobar.clientWidth || 0;
+		var visibleStats = [];
+		if (!container.classList.contains('hide-supply')) visibleStats.push(['supply', widths.supply]);
+		if (!container.classList.contains('hide-minerals')) visibleStats.push(['minerals', widths.minerals]);
+		if (!container.classList.contains('hide-gas')) visibleStats.push(['gas', widths.gas]);
+		if (!container.classList.contains('hide-workers')) visibleStats.push(['workers', widths.workers]);
+		if (!container.classList.contains('hide-army')) visibleStats.push(['army', widths.army]);
+		if (!container.classList.contains('hide-apm')) visibleStats.push(['apm', widths.apm]);
+		var fixedWidth = widths.vision + (container.classList.contains('hide-race') ? 0 : widths.race);
+		var baseNameWidth = infobarWidth >= preferredNameWidth ? preferredNameWidth : Math.max(0, infobarWidth - fixedWidth);
+		var baseVisibleWidth = baseNameWidth;
+		for (var i = 0; i < visibleStats.length; ++i) {
+			baseVisibleWidth += visibleStats[i][1];
+		}
+		var distributeCount = 1 + visibleStats.length;
+		var spareWidth = Math.max(0, infobarWidth - fixedWidth - baseVisibleWidth);
+		var sharedExtra = distributeCount ? Math.floor(spareWidth / distributeCount) : 0;
+		var extraRemainder = distributeCount ? spareWidth % distributeCount : 0;
+		var columns = [widths.vision + 'px'];
+		if (!container.classList.contains('hide-race')) columns.push(widths.race + 'px');
+		var nameWidth = baseNameWidth + sharedExtra + (extraRemainder > 0 ? 1 : 0);
+		if (extraRemainder > 0) extraRemainder -= 1;
+		columns.push('minmax(0, ' + nameWidth + 'px)');
+		for (var j = 0; j < visibleStats.length; ++j) {
+			var statWidth = visibleStats[j][1] + sharedExtra + (extraRemainder > 0 ? 1 : 0);
+			if (extraRemainder > 0) extraRemainder -= 1;
+			columns.push(statWidth + 'px');
+		}
 		infobar.style.setProperty('--infobar-columns', columns.join(' '));
 	};
 
@@ -467,7 +653,7 @@ function apply_infobar_layout() {
 	}
 
 	var availableWidth = container.clientWidth;
-	var minimumInfobarWidth = 520;
+	var minimumInfobarWidth = 500;
 	var dockWidth = infoDock ? Math.ceil(infoDock.getBoundingClientRect().width || 760) : 760;
 	var replayControlWidth = replayControl ? Math.ceil(replayControl.getBoundingClientRect().width || 224) : 224;
 	if (availableWidth - dockWidth - replayControlWidth < minimumInfobarWidth) {
@@ -491,11 +677,8 @@ function can_zoom_to(nextZoomLevel) {
 	var canvasArea = document.getElementById('canvas-area');
 	if (!canvasArea) return true;
 	var unscaledSize = canvasArea.getBoundingClientRect();
-	var zoomFactor = 1.0 * Math.pow(1.1, nextZoomLevel);
-	var scaledWidth = Math.ceil(unscaledSize.width / zoomFactor);
-	var scaledHeight = Math.ceil(unscaledSize.height / zoomFactor);
-	if (scaledWidth > 4096 || scaledHeight > 4096) return false;
-	return scaledWidth * scaledHeight <= 8000000;
+	var scaledSize = current_scaled_render_size(unscaledSize.width, unscaledSize.height, nextZoomLevel);
+	return can_allocate_render_surface(scaledSize.width, scaledSize.height);
 }
 
 function jump_seconds(seconds) {
@@ -512,13 +695,58 @@ function apply_info_strip_scale(parent_element) {
 	});
 	if (!visibleChildren.length) {
 		element.setAttribute('data-scale', '1');
+		element.style.removeProperty('--tile-width');
+		element.style.removeProperty('--tile-height');
+		element.style.removeProperty('--tile-image-height');
+		element.style.removeProperty('--tile-bar-height');
+		element.style.removeProperty('--tile-badge-font');
+		element.style.removeProperty('--tile-badge-width');
+		element.style.removeProperty('--tile-bar-max');
 		return;
 	}
-	var availableWidth = element.clientWidth || 0;
-	var scale = 4;
+	var availableWidth = Math.max(0, (element.clientWidth || 0) - 2);
 	var isArmyOrTech = /^(army|tech)_tab_content/.test(element.id);
-	var tileWidths = isArmyOrTech ? { 1: 32, 2: 20, 3: 16, 4: 12 } : { 1: 36, 2: 18, 3: 12, 4: 9 };
+	var fullColumns = isArmyOrTech ? 5 : 10;
+	var base = isArmyOrTech ? {
+		width: 38,
+		height: 38,
+		imageHeight: 38,
+		barHeight: 0,
+		badgeFont: 0.65,
+		badgeWidth: 0.9,
+		barMax: 0
+	} : {
+		width: 36,
+		height: 35,
+		imageHeight: 30,
+		barHeight: 4,
+		badgeFont: 0.65,
+		badgeWidth: 0.9,
+		barMax: 36
+	};
 	var tileGap = 1;
+	if (visibleChildren.length > fullColumns && visibleChildren.length < fullColumns * 2 && availableWidth > 0) {
+		var dynamicWidth = Math.max(1, Math.floor((availableWidth - tileGap * (visibleChildren.length - 1)) / visibleChildren.length));
+		var ratio = dynamicWidth / base.width;
+		element.style.setProperty('--tile-width', dynamicWidth + 'px');
+		element.style.setProperty('--tile-height', Math.max(1, Math.round(base.height * ratio)) + 'px');
+		element.style.setProperty('--tile-image-height', Math.max(1, Math.round(base.imageHeight * ratio)) + 'px');
+		element.style.setProperty('--tile-bar-height', Math.max(0, Math.round(base.barHeight * ratio)) + 'px');
+		element.style.setProperty('--tile-badge-font', Math.max(0.34, base.badgeFont * ratio).toFixed(3) + 'rem');
+		element.style.setProperty('--tile-badge-width', Math.max(0.45, base.badgeWidth * ratio).toFixed(3) + 'rem');
+		element.style.setProperty('--tile-bar-max', Math.max(0, Math.round(base.barMax * ratio)) + 'px');
+		element.setAttribute('data-scale', 'dynamic');
+		return;
+	}
+	element.style.removeProperty('--tile-width');
+	element.style.removeProperty('--tile-height');
+	element.style.removeProperty('--tile-image-height');
+	element.style.removeProperty('--tile-bar-height');
+	element.style.removeProperty('--tile-badge-font');
+	element.style.removeProperty('--tile-badge-width');
+	element.style.removeProperty('--tile-bar-max');
+	var scale = 4;
+	var tileWidths = isArmyOrTech ? { 1: 38, 2: 18, 3: 12, 4: 9 } : { 1: 36, 2: 17, 3: 12, 4: 9 };
 	if (availableWidth > 0) {
 		[1, 2, 3, 4].some(function(candidate) {
 			var rows = candidate === 1 ? 1 : candidate;
@@ -718,8 +946,8 @@ function toggle_sound() {
 }
 
 function best_export_mime_type() {
-	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
-	var mimeTypes = config.mimeTypes || ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+	var config = current_export_settings();
+	var mimeTypes = config.mimeTypes;
 	for (var i = 0; i < mimeTypes.length; ++i) {
 		if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mimeTypes[i])) {
 			return mimeTypes[i];
@@ -730,18 +958,18 @@ function best_export_mime_type() {
 
 function set_export_button_state(isExporting) {
 	$('#rv-rc-export').toggleClass('is-exporting', isExporting);
-	$('#rv-rc-export').prop('disabled', isExporting);
+	$('#rv-rc-export-settings').prop('disabled', isExporting);
 }
 
-function download_export_blob(blob) {
+function download_export_blob(blob, startFrame, endFrame) {
 	var url = URL.createObjectURL(blob);
 	var link = document.createElement('a');
-	var mapName = document.getElementById('map1').dataset.fullName || 'openbw-replay';
-	var safeMapName = mapName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'openbw-replay';
-	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
-	var extension = config.extension || 'webm';
+	var clipName = current_replay_player_names().join(' - ') + ', ' + format_clip_timestamp(startFrame) + ' - ' + format_clip_timestamp(endFrame);
+	var safeClipName = clipName.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'openbw-replay';
+	var config = current_export_settings();
+	var extension = config.extension;
 	link.href = url;
-	link.download = safeMapName + '.' + extension;
+	link.download = safeClipName + '.' + extension;
 	document.body.appendChild(link);
 	link.click();
 	document.body.removeChild(link);
@@ -751,19 +979,22 @@ function download_export_blob(blob) {
 }
 
 function restore_export_state(saved) {
-	_replay_set_value(1, 1);
-	_replay_set_value(3, saved.frame);
-	_replay_set_value(0, saved.speed);
-	if (typeof Module._observer_set_value === "function") {
-		_observer_set_value(saved.observerEnabled ? 1 : 0);
-		update_observer_button();
+	if (typeof clear_export_render_size === "function") {
+		clear_export_render_size();
+		if (typeof resize_canvas === "function" && Module.canvas) {
+			var restoreCanvasSize = function() {
+				resize_canvas(Module.canvas);
+			};
+			if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+				window.requestAnimationFrame(restoreCanvasSize);
+			} else {
+				setTimeout(restoreCanvasSize, 0);
+			}
+		}
 	}
-	if (typeof Module._fog_of_war_set_value === "function") {
-		_fog_of_war_set_value(saved.fowEnabled ? 1 : 0);
-		update_fow_button();
+	if (saved && typeof saved.speed !== 'undefined') {
+		update_speed(saved.speed);
 	}
-	_replay_set_value(1, saved.paused ? 1 : 0);
-	update_speed(saved.speed);
 	set_export_button_state(false);
 	exportState = null;
 }
@@ -774,6 +1005,7 @@ function stop_video_export() {
 		clearInterval(exportState.pollTimer);
 		exportState.pollTimer = null;
 	}
+	exportState.endFrame = _replay_get_value(2);
 	if (exportState.recorder.state !== 'inactive') {
 		exportState.recorder.stop();
 	}
@@ -781,38 +1013,50 @@ function stop_video_export() {
 
 function start_video_export() {
 	if (exportState || !main_has_been_called) return;
-	var config = window.OPENBW_VIDEO_EXPORT_CONFIG || {};
-	var fps = config.fps || 24;
-	var replaySpeed = config.replaySpeed || 1024;
-	var pollIntervalMs = config.pollIntervalMs || 100;
+	var config = current_export_settings();
+	var fps = config.fps;
+	var replaySpeed = config.replaySpeed;
+	var pollIntervalMs = config.pollIntervalMs;
+	var videoBitsPerSecond = Math.round(config.videoBitrateMbps * 1000000);
 	if (typeof MediaRecorder === "undefined" || !Module.canvas || typeof Module.canvas.captureStream !== "function") {
 		print_to_modal("Video export unavailable", "This browser does not support canvas recording.");
 		return;
+	}
+
+	if (typeof set_export_render_size === "function") {
+		set_export_render_size(config.width, config.height);
+		if (typeof resize_canvas === "function") {
+			if (!resize_canvas(Module.canvas)) {
+				clear_export_render_size();
+				print_to_modal("Video export unavailable", "The selected render size is too large for the current browser memory budget.");
+				return;
+			}
+		}
 	}
 
 	var mimeType = best_export_mime_type();
 	var stream = Module.canvas.captureStream(fps);
 	var chunks = [];
 	var saved = {
-		frame: _replay_get_value(2),
 		speed: _replay_get_value(0),
-		paused: _replay_get_value(1) !== 0,
-		observerEnabled: typeof Module._observer_get_value === "function" ? _observer_get_value() !== 0 : true,
-		fowEnabled: typeof Module._fog_of_war_get_value === "function" ? _fog_of_war_get_value() !== 0 : true
+		startFrame: _replay_get_value(2)
 	};
 
 	set_export_button_state(true);
-	print_to_modal(
-		config.modalTitle || "Exporting video",
-		config.modalMessage || "Recording replay to WebM from the opening frame at maximum replay speed.",
-		false,
-		{ bottomViewport: true }
-	);
 
 	var recorder;
 	try {
-		recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+		var recorderOptions = {};
+		if (mimeType) recorderOptions.mimeType = mimeType;
+		if (videoBitsPerSecond > 0) recorderOptions.videoBitsPerSecond = videoBitsPerSecond;
+		recorder = Object.keys(recorderOptions).length ? new MediaRecorder(stream, recorderOptions) : new MediaRecorder(stream);
 	} catch (error) {
+		if (typeof clear_export_render_size === "function") {
+			clear_export_render_size();
+			if (typeof resize_canvas === "function") {
+				resize_canvas(Module.canvas);
+			}
+		}
 		set_export_button_state(false);
 		print_to_modal("Video export unavailable", "Failed to initialize the browser recorder.");
 		return;
@@ -823,7 +1067,7 @@ function start_video_export() {
 		stream: stream,
 		chunks: chunks,
 		saved: saved,
-		targetEndFrame: window.__openbwTestExportFrameLimit ? Math.min(_replay_get_value(4), window.__openbwTestExportFrameLimit) : _replay_get_value(4),
+		endFrame: saved.startFrame,
 		pollTimer: null
 	};
 
@@ -845,38 +1089,17 @@ function start_video_export() {
 				track.stop();
 			});
 		}
-		close_modal();
 		if (stoppedState.chunks.length) {
-			download_export_blob(new Blob(stoppedState.chunks, { type: mimeType || 'video/webm' }));
+			download_export_blob(new Blob(stoppedState.chunks, { type: mimeType || 'video/webm' }), stoppedState.saved.startFrame, stoppedState.endFrame);
 		}
 		restore_export_state(stoppedState.saved);
 	};
 
-	_replay_set_value(1, 1);
-	_replay_set_value(3, 0);
-	if (typeof Module._observer_set_value === "function") {
-		_observer_set_value(1);
-		update_observer_button();
-	}
-
-	var beginRecording = function() {
-		if (_replay_get_value(2) > 0) {
-			setTimeout(beginRecording, 50);
-			return;
-		}
-
-		recorder.start();
-		_replay_set_value(0, replaySpeed);
-		update_speed(replaySpeed);
+	recorder.start();
+	if (_replay_get_value(1) !== 0) {
 		_replay_set_value(1, 0);
-		exportState.pollTimer = setInterval(function() {
-			if (!exportState) return;
-			if (_replay_get_value(2) >= exportState.targetEndFrame) {
-				stop_video_export();
-			}
-		}, pollIntervalMs);
-	};
-	beginRecording();
+	}
+	update_speed(_replay_get_value(0));
 }
 
 function toggle_pause() {
@@ -899,7 +1122,7 @@ function update_speed(speed) {
 
 var IMG_URL1 = "images/production_icons/icon ";
 var IMG_URL2 = ".bmp";
-function set_icon(tab_nr, parent_element, child_nr, icon_id, percentage, info) {
+function set_icon(tab_nr, parent_element, child_nr, icon_id, percentage, info, tooltip) {
 	
 	if (icon_id < 10) icon_id = "0" + icon_id;
 	if (icon_id < 100) icon_id = "0" + icon_id;
@@ -917,6 +1140,9 @@ function set_icon(tab_nr, parent_element, child_nr, icon_id, percentage, info) {
 	if (img_element.attr("src").localeCompare(img_src) != 0) {
 		img_element.attr("src", img_src);
 	}
+	img_element.attr("title", tooltip || "");
+	img_element.attr("alt", tooltip || "");
+	element.attr("title", tooltip || "");
 	if (tab_nr == 2) {
 		element.children("span").html(info);
 		element.children("div").first().html("");
@@ -932,7 +1158,11 @@ function set_icon(tab_nr, parent_element, child_nr, icon_id, percentage, info) {
 function clear_icon(parent_element, child_nr) {
 	
 	var element = parent_element.children("div").eq(child_nr);
-	if (element.length) element.hide();
+	if (element.length) {
+		element.removeAttr("title");
+		element.children("img").removeAttr("title").removeAttr("alt");
+		element.hide();
+	}
 }
 
 function update_army_tab(complete_units) {
@@ -966,7 +1196,7 @@ function update_army_tab(complete_units) {
 			
 			var count = unit_types[players[i]][type];
 			
-			set_icon(2, element, type_count, type, 1, count);
+			set_icon(2, element, type_count, type, 1, count, display_name_for_icon('unit', type));
 			++type_count;
 		}
 		for (var j = type_count; j < 20; j++) {
@@ -991,7 +1221,7 @@ function update_research_tab(researches) {
 		for (var j = 0; j < complete.length; j++) {
 			
 			if ($.inArray(complete[j].id, unused_research) == -1) {
-				set_icon(4, element, index, complete[j].icon, 1, null);
+				set_icon(4, element, index, complete[j].icon, 1, null, display_name_for_icon('tech', complete[j].id));
 				index++;
 			}
 		}
@@ -1000,7 +1230,7 @@ function update_research_tab(researches) {
 		for (var j = 0; j < incomplete.length; j++) {
 			
 			var build_percentage = 1 - incomplete[j].remaining_time / incomplete[j].total_time;
-			set_icon(4, element, j + index, incomplete[j].icon, build_percentage, null);
+			set_icon(4, element, j + index, incomplete[j].icon, build_percentage, null, display_name_for_icon('tech', incomplete[j].id));
 		}
 		
 		 //clear the unused spots
@@ -1016,13 +1246,14 @@ function update_tech_tab(upgrades, researches) {
 		var slot = 0;
 		var completeUpgrades = upgrades[i][1];
 		for (var j = 0; j < completeUpgrades.length; j++) {
-			set_icon(3, element, slot++, completeUpgrades[j].icon, 1, completeUpgrades[j].level);
+			var upgradeLevel = completeUpgrades[j].max_level && completeUpgrades[j].max_level <= 1 ? "" : completeUpgrades[j].level;
+			set_icon(3, element, slot++, completeUpgrades[j].icon, 1, upgradeLevel, display_name_for_icon('upgrade', completeUpgrades[j].id));
 		}
 
 		var completeResearch = researches[i][1];
 		for (var j = 0; j < completeResearch.length; j++) {
 			if ($.inArray(completeResearch[j].id, unused_research) == -1) {
-				set_icon(4, element, slot++, completeResearch[j].icon, 1, "");
+				set_icon(4, element, slot++, completeResearch[j].icon, 1, "", display_name_for_icon('tech', completeResearch[j].id));
 			}
 		}
 
@@ -1044,14 +1275,16 @@ function update_upgrades_tab(upgrades) {
 		
 		for (var j = 0; j < complete.length; j++) {
 			
-			set_icon(3, element, j, complete[j].icon, 1, complete[j].level);
+			var completeLevel = complete[j].max_level && complete[j].max_level <= 1 ? "" : complete[j].level;
+			set_icon(3, element, j, complete[j].icon, 1, completeLevel, display_name_for_icon('upgrade', complete[j].id));
 		}
 		
 		var incomplete = upgrades[i][2];
 		for (var j = 0; j < incomplete.length; j++) {
 			
 			var build_percentage = 1 - incomplete[j].remaining_time / incomplete[j].total_time;
-			set_icon(3, element, j + complete.length, incomplete[j].icon, build_percentage, incomplete[j].level);
+			var incompleteLevel = incomplete[j].max_level && incomplete[j].max_level <= 1 ? "" : incomplete[j].level;
+			set_icon(3, element, j + complete.length, incomplete[j].icon, build_percentage, incompleteLevel, display_name_for_icon('upgrade', incomplete[j].id));
 		}
 		
 		 //clear the unused spots
@@ -1090,7 +1323,7 @@ function update_production_tab(incomplete_units, upgrades, researches) {
 		
 		var build_percentage = 1 - u.remaining_build_time / build_time;
 		
-		unit_names[u.owner].push([t, build_percentage]);
+		unit_names[u.owner].push([t, build_percentage, display_name_for_icon('unit', t)]);
 	}
 
 	if (upgrades) {
@@ -1098,7 +1331,7 @@ function update_production_tab(incomplete_units, upgrades, researches) {
 			var incompleteUpgrades = upgrades[i][2];
 			for (var j = 0; j < incompleteUpgrades.length; ++j) {
 				var upgradeProgress = 1 - incompleteUpgrades[j].remaining_time / incompleteUpgrades[j].total_time;
-				unit_names[upgrades[i][0]].push([incompleteUpgrades[j].icon, upgradeProgress]);
+				unit_names[upgrades[i][0]].push([incompleteUpgrades[j].icon, upgradeProgress, display_name_for_icon('upgrade', incompleteUpgrades[j].id)]);
 			}
 		}
 	}
@@ -1109,7 +1342,7 @@ function update_production_tab(incomplete_units, upgrades, researches) {
 			for (var j = 0; j < incompleteResearch.length; ++j) {
 				if ($.inArray(incompleteResearch[j].id, unused_research) == -1) {
 					var researchProgress = 1 - incompleteResearch[j].remaining_time / incompleteResearch[j].total_time;
-					unit_names[researches[i][0]].push([incompleteResearch[j].icon, researchProgress]);
+					unit_names[researches[i][0]].push([incompleteResearch[j].icon, researchProgress, display_name_for_icon('tech', incompleteResearch[j].id)]);
 				}
 			}
 		}
@@ -1123,7 +1356,7 @@ function update_production_tab(incomplete_units, upgrades, researches) {
     	//fill the spots with all units in production for current player
 	    for (var j = 0; j != unit_names[players[i]].length; ++j) {
 	    	
-	    	set_icon(1, element, j, unit_names[players[i]][j][0], unit_names[players[i]][j][1], null);
+	    	set_icon(1, element, j, unit_names[players[i]][j][0], unit_names[players[i]][j][1], null, unit_names[players[i]][j][2]);
 	    }
 	    
 	    //clear the unused spots

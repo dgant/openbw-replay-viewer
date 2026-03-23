@@ -51,6 +51,20 @@ var main_has_been_called = false;
 var load_replay_data_arr = null;
 var replayPlaylist = [];
 var replayPlaylistIndex = -1;
+var remoteReplayStatus = null;
+var query_params = new URLSearchParams(window.location.search);
+var embeddedReplayConfig = {
+	enabled: query_params.get('embedded') === '1',
+	playerFilter: (query_params.get('player') || '').trim().toLowerCase(),
+	maxMinutes: parseFloat(query_params.get('maxMinutes') || '')
+};
+var embeddedReplayState = {
+	watchedKeys: {},
+	currentGameKey: null,
+	advanceScheduled: false,
+	fetchInProgress: false,
+	retryTimer: null
+};
 
 var files = [];
 var js_read_buffers = [];
@@ -58,6 +72,7 @@ var is_reading = false;
 var is_fetching_default_mpqs = false;
 
 var players = [];
+var C_BASIL_DATA_BASE_URL = "https://data.basil-ladder.net/";
 
 /*****************************
  * Functions
@@ -68,7 +83,7 @@ var players = [];
  * Adds the drag and drop functionality.
  */
 jQuery(document).ready( function($) {
-	$('#rv_modal, #quick_help, #goto').foundation();
+	$('#rv_modal, #quick_help, #goto, #export_settings').foundation();
 	
 	Module.canvas = document.getElementById("canvas");
 	var canvas = Module.canvas;
@@ -94,6 +109,7 @@ jQuery(document).ready( function($) {
 	});
 	
 	initialize_canvas(canvas);
+	install_mobile_camera_controls(canvas);
 	
 	add_drag_and_drop_listeners(document.body, canvas);
 	document.getElementById("mpq_files").addEventListener("change", on_mpq_specify_select, false);
@@ -140,6 +156,44 @@ function initialize_canvas(canvas) {
 	// 	resize_canvas(canvas);
 	// 	print_to_modal("Loading...", ajax_object.replay_file.substring(27));
 	}
+}
+
+function set_pregame_dropzone_status(title, message) {
+	var dropzone = document.querySelector('.pregame-dropzone');
+	if (!dropzone) return;
+	if (!remoteReplayStatus) {
+		remoteReplayStatus = {
+			html: dropzone.innerHTML
+		};
+	}
+	dropzone.innerHTML =
+		(title ? '<div class="pregame-status-title">' + title + '</div>' : '') +
+		'<div class="pregame-status-message">' + message + '</div>';
+	dropzone.classList.add('pregame-dropzone-status');
+}
+
+function reset_pregame_dropzone() {
+	var dropzone = document.querySelector('.pregame-dropzone');
+	if (!dropzone || !remoteReplayStatus) return;
+	dropzone.innerHTML = remoteReplayStatus.html;
+	dropzone.classList.remove('pregame-dropzone-status');
+	var notes = document.querySelector('.pregame-notes');
+	if (notes) notes.style.display = '';
+	var overlay = document.getElementById('pregame-overlay');
+	if (overlay) overlay.classList.remove('pregame-loading');
+	document.getElementById("select_rep_file").addEventListener("change", on_rep_file_select, false);
+}
+
+function show_loading_replay_screen(url) {
+	var overlay = document.getElementById('pregame-overlay');
+	var notes = document.querySelector('.pregame-notes');
+	if (overlay) {
+		overlay.style.display = 'grid';
+		overlay.classList.add('pregame-loading');
+	}
+	$('body').addClass('pregame-active');
+	if (notes) notes.style.display = 'none';
+	set_pregame_dropzone_status("Loading replay", url);
 }
 
 var resource_count = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
@@ -313,6 +367,63 @@ function add_drag_and_drop_listeners(element, canvas) {
 	}, false);
 }
 
+function install_mobile_camera_controls(canvas) {
+	if (!canvas) return;
+	var touchState = null;
+	var isTouchViewport = function() {
+		return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+	};
+	var isMinimapTouch = function(clientX, clientY, rect) {
+		var localX = clientX - rect.left;
+		var localY = clientY - rect.top;
+		var minimapSize = 128;
+		return localX >= 0 && localX <= minimapSize && localY >= rect.height - minimapSize && localY <= rect.height;
+	};
+	var updateCameraFromTouch = function(clientX, clientY) {
+		if (!touchState || typeof _ui_set_screen_center_manual !== "function" || typeof _ui_get_screen_pos !== "function") return;
+		var rect = canvas.getBoundingClientRect();
+		var scaleX = rect.width ? Module.canvas.width / rect.width : 1;
+		var scaleY = rect.height ? Module.canvas.height / rect.height : 1;
+		var deltaX = Math.round((clientX - touchState.startX) * scaleX);
+		var deltaY = Math.round((clientY - touchState.startY) * scaleY);
+		_ui_set_screen_center_manual(
+			touchState.screenPosX - deltaX + Math.round(Module.canvas.width / 2),
+			touchState.screenPosY - deltaY + Math.round(Module.canvas.height / 2)
+		);
+	};
+
+	canvas.style.touchAction = 'none';
+	canvas.addEventListener("touchstart", function(e) {
+		if (!isTouchViewport() || !e.touches.length) return;
+		var touch = e.touches[0];
+		var rect = canvas.getBoundingClientRect();
+		if (isMinimapTouch(touch.clientX, touch.clientY, rect)) return;
+		touchState = {
+			startX: touch.clientX,
+			startY: touch.clientY,
+			screenPosX: typeof _ui_get_screen_pos === "function" ? _ui_get_screen_pos(0) : 0,
+			screenPosY: typeof _ui_get_screen_pos === "function" ? _ui_get_screen_pos(1) : 0
+		};
+		e.preventDefault();
+	}, { passive: false });
+	canvas.addEventListener("touchmove", function(e) {
+		if (!touchState || !isTouchViewport() || !e.touches.length) return;
+		updateCameraFromTouch(e.touches[0].clientX, e.touches[0].clientY);
+		e.preventDefault();
+	}, { passive: false });
+	canvas.addEventListener("touchend", function(e) {
+		if (!touchState || !isTouchViewport()) return;
+		if (e.changedTouches.length) {
+			updateCameraFromTouch(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+		}
+		touchState = null;
+		e.preventDefault();
+	}, { passive: false });
+	canvas.addEventListener("touchcancel", function() {
+		touchState = null;
+	}, { passive: true });
+}
+
 /*****************************
  * Helper functions
  *****************************/
@@ -349,8 +460,103 @@ function update_replay_playlist_controls() {
 	if (!hasPlaylist) return;
 	$('#playlist-position').text('#' + (replayPlaylistIndex + 1) + ' of ' + replayPlaylist.length);
 	$('#playlist-name').text(replayPlaylist[replayPlaylistIndex].displayName);
-	$('#playlist-prev').prop('disabled', replayPlaylistIndex <= 0);
-	$('#playlist-next').prop('disabled', replayPlaylistIndex >= replayPlaylist.length - 1);
+	$('#playlist-prev').prop('disabled', replayPlaylist.length <= 1);
+	$('#playlist-next').prop('disabled', replayPlaylist.length <= 1);
+}
+
+function show_embedded_home_message(message) {
+	$('#pregame-overlay').css('display', 'grid');
+	$('body').addClass('pregame-active');
+	var notes = document.querySelector('.pregame-notes');
+	if (notes) notes.style.display = 'none';
+	set_pregame_dropzone_status("", message);
+}
+
+function format_basil_replay_url(botName, opponentName, mapName, gameHash) {
+	return C_BASIL_DATA_BASE_URL + "bots/" + botName + "/" + botName + " vs " + opponentName + " " + mapName + " " + gameHash + ".rep";
+}
+
+function embedded_replay_matches(entry, bots, maps) {
+	if (!entry || entry.invalidGame || entry.realTimeout) return false;
+	var botA = bots[entry.botA.botIndex];
+	var botB = bots[entry.botB.botIndex];
+	if (!botA || !botB) return false;
+	if (embeddedReplayConfig.playerFilter) {
+		var haystack = (botA.name + " " + botB.name).toLowerCase();
+		if (haystack.indexOf(embeddedReplayConfig.playerFilter) === -1) return false;
+	}
+	if (!Number.isNaN(embeddedReplayConfig.maxMinutes)) {
+		if (!entry.frameCount) return false;
+		if ((entry.frameCount / 24 / 60) > embeddedReplayConfig.maxMinutes) return false;
+	}
+	return !!maps[entry.mapIndex];
+}
+
+function fetch_embedded_replay_candidates() {
+	return fetch(C_BASIL_DATA_BASE_URL + "stats/games_24h.json")
+		.then(function(response) {
+			if (!response.ok) throw new Error("Failed to fetch BASIL replay list");
+			return response.json();
+		})
+		.then(function(payload) {
+			var bots = payload.bots || [];
+			var maps = payload.maps || [];
+			var results = payload.results || [];
+			return results
+				.filter(function(entry) {
+					return embedded_replay_matches(entry, bots, maps);
+				})
+				.map(function(entry) {
+					var botA = bots[entry.botA.botIndex];
+					var botB = bots[entry.botB.botIndex];
+					var mapName = maps[entry.mapIndex];
+					return {
+						key: entry.gameHash,
+						replayUrl: format_basil_replay_url(botA.name, botB.name, mapName, entry.gameHash),
+						endedAt: entry.endedAt || 0
+					};
+				})
+				.sort(function(a, b) {
+					return b.endedAt - a.endedAt;
+				});
+		});
+}
+
+function schedule_embedded_retry() {
+	if (embeddedReplayState.retryTimer) return;
+	embeddedReplayState.retryTimer = setTimeout(function() {
+		embeddedReplayState.retryTimer = null;
+		load_next_embedded_replay();
+	}, 60000);
+}
+
+function load_next_embedded_replay() {
+	if (!embeddedReplayConfig.enabled || embeddedReplayState.fetchInProgress) return;
+	embeddedReplayState.fetchInProgress = true;
+	show_embedded_home_message("Loading replay list...");
+	fetch_embedded_replay_candidates()
+		.then(function(candidates) {
+			embeddedReplayState.fetchInProgress = false;
+			if (!candidates.length) {
+				show_embedded_home_message("No replays available");
+				schedule_embedded_retry();
+				return;
+			}
+			var selected = candidates.find(function(candidate) {
+				return !embeddedReplayState.watchedKeys[candidate.key];
+			});
+			if (!selected) {
+				embeddedReplayState.watchedKeys = {};
+				selected = candidates[0];
+			}
+			embeddedReplayState.currentGameKey = selected.key;
+			load_replay_url(selected.replayUrl);
+		})
+		.catch(function(error) {
+			embeddedReplayState.fetchInProgress = false;
+			show_embedded_home_message(error && error.message ? error.message : "Failed to load replay list");
+			schedule_embedded_retry();
+		});
 }
 
 function set_replay_playlist(entries, activeIndex) {
@@ -400,13 +606,13 @@ function load_replay_playlist_index(index, canvas) {
 }
 
 function load_previous_replay() {
-	if (replayPlaylistIndex <= 0) return;
-	load_replay_playlist_index(replayPlaylistIndex - 1, Module.canvas);
+	if (replayPlaylist.length <= 1) return;
+	load_replay_playlist_index((replayPlaylistIndex - 1 + replayPlaylist.length) % replayPlaylist.length, Module.canvas);
 }
 
 function load_next_replay() {
-	if (replayPlaylistIndex < 0 || replayPlaylistIndex >= replayPlaylist.length - 1) return;
-	load_replay_playlist_index(replayPlaylistIndex + 1, Module.canvas);
+	if (replayPlaylist.length <= 1) return;
+	load_replay_playlist_index((replayPlaylistIndex + 1) % replayPlaylist.length, Module.canvas);
 }
 
 function normalize_replay_entries(fileList) {
@@ -478,41 +684,132 @@ let currentSize = {
 	width: 0,
 	height: 0,
 	zoomLevel: 0,
+	renderWidth: 0,
+	renderHeight: 0,
 };
+let exportRenderSize = null;
+const RESIZE_SURFACE_BUDGET_BYTES = 80 * 1024 * 1024;
+const RESIZE_BYTES_PER_PIXEL_ESTIMATE = 12;
+
+function invalidate_canvas_size_cache() {
+	currentSize = {
+		width: 0,
+		height: 0,
+		zoomLevel: 0,
+		renderWidth: 0,
+		renderHeight: 0,
+	};
+}
+
+function set_export_render_size(width, height) {
+	if (width > 0 && height > 0) {
+		exportRenderSize = {
+			width: width,
+			height: height
+		};
+	} else {
+		exportRenderSize = null;
+	}
+}
+
+function clear_export_render_size() {
+	exportRenderSize = null;
+}
+
+function current_scaled_render_size(renderWidth, renderHeight, zoom) {
+	let zoomFactor = 1.0 * Math.pow(1.1, zoom);
+	return {
+		width: Math.ceil(renderWidth / zoomFactor),
+		height: Math.ceil(renderHeight / zoomFactor)
+	};
+}
+
+function can_allocate_render_surface(width, height) {
+	if (!(width > 0 && height > 0)) return false;
+	if (typeof _ui_can_resize === "function") {
+		return !!_ui_can_resize(width, height);
+	}
+	return width * height <= Math.floor(RESIZE_SURFACE_BUDGET_BYTES / RESIZE_BYTES_PER_PIXEL_ESTIMATE);
+}
+
+function find_safe_zoom_level(renderWidth, renderHeight, requestedZoomLevel) {
+	let safeZoomLevel = requestedZoomLevel;
+	while (safeZoomLevel < 4) {
+		let scaledSize = current_scaled_render_size(renderWidth, renderHeight, safeZoomLevel);
+		if (can_allocate_render_surface(scaledSize.width, scaledSize.height)) {
+			return safeZoomLevel;
+		}
+		safeZoomLevel += 1;
+	}
+	return 4;
+}
 
 function resize_canvas(canvas) {
 
 	const canvasArea = document.getElementById('canvas-area');
-	const unscaledSize = canvasArea.getBoundingClientRect();
-	if (currentSize.width === unscaledSize.width && currentSize.height === unscaledSize.height && currentSize.zoomLevel === zoomLevel) {
+	const liveSize = canvasArea.getBoundingClientRect();
+	const renderWidth = exportRenderSize ? exportRenderSize.width : liveSize.width;
+	const renderHeight = exportRenderSize ? exportRenderSize.height : liveSize.height;
+	let effectiveZoomLevel = exportRenderSize ? zoomLevel : find_safe_zoom_level(renderWidth, renderHeight, zoomLevel);
+	if (effectiveZoomLevel !== zoomLevel && !exportRenderSize) {
+		zoomLevel = effectiveZoomLevel;
+		localStorage.zoomLevel = '' + zoomLevel;
+		if (typeof update_zoom_buttons === "function") update_zoom_buttons();
+	}
+	if (currentSize.width === liveSize.width && currentSize.height === liveSize.height && currentSize.zoomLevel === effectiveZoomLevel && currentSize.renderWidth === renderWidth && currentSize.renderHeight === renderHeight) {
 		return;
 	}
 
-	let zoomFactor = 1.0 * Math.pow(1.1, zoomLevel);
+	let zoomFactor = 1.0 * Math.pow(1.1, effectiveZoomLevel);
+	let previousScaledSize = current_scaled_render_size(currentSize.renderWidth || liveSize.width, currentSize.renderHeight || liveSize.height, typeof currentSize.zoomLevel === 'number' ? currentSize.zoomLevel : effectiveZoomLevel);
+	let currentCenter = null;
+	if (typeof _ui_get_screen_pos === "function" && currentSize.renderWidth && currentSize.renderHeight) {
+		currentCenter = {
+			x: Math.round(_ui_get_screen_pos(0) + previousScaledSize.width / 2),
+			y: Math.round(_ui_get_screen_pos(1) + previousScaledSize.height / 2)
+		};
+	}
 
 	currentSize = {
-		width: unscaledSize.width,
-		height: unscaledSize.height,
+		width: liveSize.width,
+		height: liveSize.height,
+		zoomLevel: effectiveZoomLevel,
+		renderWidth: renderWidth,
+		renderHeight: renderHeight,
 	};
+
+	let scaledWidth = Math.ceil(renderWidth / zoomFactor);
+	let scaledHeight = Math.ceil(renderHeight / zoomFactor);
+	if (!can_allocate_render_surface(scaledWidth, scaledHeight)) {
+		if (exportRenderSize) {
+			return false;
+		}
+		return false;
+	}
 
     canvas.style.border = 0;
     canvas.parentElement.style.position = "relative";
     canvas.style.position = "absolute";
     canvas.style.width = "100%";
     canvas.style.height = "100%";
-	canvas.style.top = "";
+	canvas.style.top = exportRenderSize ? "0" : "";
+	canvas.style.left = exportRenderSize ? "0" : "";
+	canvas.style.transform = exportRenderSize ? "none" : "";
+	canvasArea.style.backgroundColor = exportRenderSize ? "#000000" : "";
 
 	// Reset zoom scale before setting the canvas size, since otherwise emscripten/OpenBW will see the size difference and override it
 	$('#canvas-zoom-outer').css({
-		'transform': 'scale(1.0)',
+		'position': exportRenderSize ? 'absolute' : 'relative',
+		'width': exportRenderSize ? scaledWidth + 'px' : '100%',
+		'height': exportRenderSize ? scaledHeight + 'px' : '100%',
+		'left': exportRenderSize ? '50%' : '0',
+		'top': exportRenderSize ? '50%' : '0',
+		'transform': exportRenderSize ? 'translate(-50%, -50%) scale(1.0)' : 'scale(1.0)',
 		'transform-origin': 'top left',
 	});
 
-	let scaledWidth = Math.ceil(unscaledSize.width / zoomFactor);
-	let scaledHeight = Math.ceil(unscaledSize.height / zoomFactor);
-
 	if (typeof _ui_set_minimap_reference_size === "function") {
-		_ui_set_minimap_reference_size(Math.ceil(unscaledSize.width), Math.ceil(unscaledSize.height));
+		_ui_set_minimap_reference_size(Math.ceil(renderWidth), Math.ceil(renderHeight));
 	}
 
 	$('#canvas-zoom-inner').css({
@@ -521,15 +818,19 @@ function resize_canvas(canvas) {
 	});
 
     _ui_resize(scaledWidth, scaledHeight);
+	if (currentCenter && typeof _ui_set_screen_center === "function") {
+		_ui_set_screen_center(currentCenter.x, currentCenter.y);
+	}
 
 	$('#canvas-zoom-outer').css({
-		'transform': 'scale(' + zoomFactor + ')',
+		'transform': exportRenderSize ? 'translate(-50%, -50%) scale(' + zoomFactor + ')' : 'scale(' + zoomFactor + ')',
 		'transform-origin': 'top left',
 	});
 
 	var ctx = document.getElementById("graphs_tab");
 	ctx.style.width = "70%";
 	ctx.style.height = "70%";
+	return true;
 }
 
 function js_fatal_error(ptr) {
@@ -631,6 +932,17 @@ function js_post_main_loop() {
 	    update_info_tab();
 	    update_graphs(frame);
 	    last_update_frame = frame;
+	}
+	if (embeddedReplayConfig.enabled && embeddedReplayState.currentGameKey && !embeddedReplayState.advanceScheduled) {
+		var endFrame = _replay_get_value(4);
+		if (endFrame > 0 && frame >= endFrame) {
+			embeddedReplayState.advanceScheduled = true;
+			embeddedReplayState.watchedKeys[embeddedReplayState.currentGameKey] = true;
+			setTimeout(function() {
+				embeddedReplayState.advanceScheduled = false;
+				load_next_embedded_replay();
+			}, 1000);
+		}
 	}
 }
 
@@ -814,8 +1126,7 @@ function fetch_default_mpqs() {
  *****************************/
 
 function load_replay_url(url) {
-	
-    print_to_modal("Status", "Downloading " + url + "...");
+	show_loading_replay_screen(url);
     
     var req = new XMLHttpRequest();
     req.onreadystatechange = function() {
@@ -826,8 +1137,8 @@ function load_replay_url(url) {
 	        var buf = allocate_replay_buffer(arr);
 	        start_replay(buf, arr.length);
 	        _free(buf);
-        } else {
-        	print_to_modal("Status", "fetching " + url + ": " + req.statusText);
+        } else if (req.readyState == XMLHttpRequest.DONE) {
+        	set_pregame_dropzone_status("Loading replay", "fetching " + url + ": " + req.statusText);
         }
     }
     req.responseType = "arraybuffer";
@@ -842,8 +1153,15 @@ function start_replay(buffer, length) {
 	$('#top').css('display', 'none');
 	$('#pregame-overlay').css('display', 'none');
 	$('body').removeClass('pregame-active');
+	if (embeddedReplayState.retryTimer) {
+		clearTimeout(embeddedReplayState.retryTimer);
+		embeddedReplayState.retryTimer = null;
+	}
+	embeddedReplayState.advanceScheduled = false;
+	reset_pregame_dropzone();
 	$('#zoom-buttons').css('display', 'grid');
-	$('#viewport-export').css('display', 'block');
+	$('#viewport-export').css('display', 'grid');
+	$('#rv-rc-next-embedded-wrap').css('display', embeddedReplayConfig.enabled ? 'flex' : 'none');
 	$('.widget_replay_viewer_widget').css({
 		'position': 'absolute',
 		'width': '100%',
@@ -940,6 +1258,8 @@ function on_read_all_done() {
         	load_replay_url(inputs.url);
         } else if (ajax_object.replay_file != null) {
         	load_replay_url(ajax_object.replay_file);
+        } else if (embeddedReplayConfig.enabled) {
+        	load_next_embedded_replay();
         } else {
         	// $('#play_demo_button').removeClass('disabled');
         	$('#select_replay_label').removeClass('disabled');
