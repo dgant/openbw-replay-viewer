@@ -7087,7 +7087,8 @@ body#tinymce {
   padding: 0px 0px 0px 0px;
   color: #181b22;
   position: relative;
-  z-index: 2; }
+  z-index: 2;
+  min-width: 212px; }
   .replay-control .row {
     max-width: none;
     margin-left: 0;
@@ -7106,6 +7107,8 @@ body#tinymce {
     font-size: 0.8rem;
     text-align: left;
     color: white; }
+    .replay-control .rv-rc-timer > div {
+      white-space: nowrap; }
     .replay-control .rv-rc-timer.scrub-preview {
       color: #ffd36c; }
 .replay-control .rv-rc-controls {
@@ -7142,6 +7145,7 @@ body#tinymce {
       height: 36px;
       width: 36px;
       background-image: url("images/player_icons/play.svg");
+      background-position: center;
       -webkit-background-size: contain;
               background-size: contain;
       background-repeat: no-repeat; }
@@ -7157,7 +7161,6 @@ body#tinymce {
       background-image: url("images/player_icons/slower.svg"); }
     .replay-control .rv-rc-controls div .rv-rc-next-embedded {
       background-image: url("images/player_icons/fast-forward.svg");
-      background-position: center;
       background-size: contain; }
 
 .bottom-info-dock {
