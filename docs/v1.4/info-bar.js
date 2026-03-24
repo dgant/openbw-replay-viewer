@@ -705,7 +705,7 @@ function apply_info_strip_scale(parent_element) {
 		return;
 	}
 	var availableWidth = Math.max(0, (element.clientWidth || 0) - 2);
-	var isArmyOrTech = /^(army|tech)_tab_content/.test(element.id);
+	var isArmyOrTech = /^(army|tech|upgrade)_tab_content/.test(element.id);
 	var fullColumns = isArmyOrTech ? 5 : 10;
 	var base = isArmyOrTech ? {
 		width: 38,
