@@ -53,7 +53,6 @@ var replayPlaylist = [];
 var replayPlaylistIndex = -1;
 var remoteReplayStatus = null;
 var query_params = new URLSearchParams(window.location.search);
-var requestedCameraMode = query_params.get('camera') === 'v3' ? 3 : 2;
 var embeddedReplayConfig = {
 	enabled: query_params.get('embedded') === '1',
 	playerFilter: (query_params.get('player') || '').trim().toLowerCase(),
@@ -1202,9 +1201,6 @@ function start_replay(buffer, length) {
 	    	main_has_been_called = true;
 			Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
 	    }
-		if (typeof Module._observer_set_mode === "function") {
-			_observer_set_mode(requestedCameraMode);
-		}
 		if (typeof update_observer_button === "function") {
 			update_observer_button();
 		}
