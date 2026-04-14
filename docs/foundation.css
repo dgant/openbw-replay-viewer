@@ -7878,6 +7878,47 @@ body.pregame-active #info-dock .info-dock-header {
     margin-right: 2rem; }
   #export_settings .close-button {
     top: 0.85rem; }
+  #export_settings .settings-tab-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem; }
+  #export_settings .settings-tab-buttons .button.success {
+    background-color: transparent;
+    color: #9aa9bd;
+    border: 1px solid #50617a;
+    margin-bottom: 0; }
+  #export_settings .settings-tab-buttons .button.success.is-active {
+    background-color: #3adb76;
+    color: #fff;
+    border-color: transparent; }
+  #export_settings .settings-panel[hidden] {
+    display: none !important; }
+  #export_settings .settings-audio-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem; }
+  #export_settings .settings-audio-toggle {
+    min-width: 8.5rem;
+    justify-content: center;
+    margin-bottom: 0;
+    background-color: transparent;
+    color: #9aa9bd;
+    border: 1px solid #50617a; }
+  #export_settings .settings-audio-toggle.is-enabled {
+    background-color: #3adb76;
+    color: #fff;
+    border-color: transparent; }
+  #export_settings .settings-audio-slider {
+    width: 100%;
+    margin: 0;
+    accent-color: #3adb76; }
+  #export_settings .settings-audio-value {
+    min-width: 3rem;
+    text-align: right;
+    color: #d7e3f4;
+    font-variant-numeric: tabular-nums; }
   #export_settings .input-group {
     display: inline-flex;
     width: auto;

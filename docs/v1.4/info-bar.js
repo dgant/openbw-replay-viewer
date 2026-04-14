@@ -1,5 +1,53 @@
 const fps = (1000 / 42);
-let volumeSettings = JSON.parse(localStorage.volumeSettings || '{"level":0.5,"muted":false}');
+function sanitize_unit_interval(value, fallback) {
+	var parsed = parseFloat(value);
+	return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : fallback;
+}
+
+function load_volume_settings() {
+	try {
+		var saved = JSON.parse(localStorage.volumeSettings || '{}');
+		return {
+			level: sanitize_unit_interval(saved.level, 0.5),
+			muted: !!saved.muted
+		};
+	} catch (error) {
+		return {
+			level: 0.5,
+			muted: false
+		};
+	}
+}
+
+const defaultAudioCategorySettings = {
+	combat: { enabled: true, level: 1 },
+	acknowledgements: { enabled: true, level: 1 },
+	music: { enabled: true, level: 1 }
+};
+
+function load_audio_category_settings() {
+	try {
+		var saved = JSON.parse(localStorage.audioCategorySettings || '{}');
+		return {
+			combat: {
+				enabled: saved.combat && typeof saved.combat.enabled !== 'undefined' ? !!saved.combat.enabled : true,
+				level: sanitize_unit_interval(saved.combat && saved.combat.level, 1)
+			},
+			acknowledgements: {
+				enabled: saved.acknowledgements && typeof saved.acknowledgements.enabled !== 'undefined' ? !!saved.acknowledgements.enabled : true,
+				level: sanitize_unit_interval(saved.acknowledgements && saved.acknowledgements.level, 1)
+			},
+			music: {
+				enabled: saved.music && typeof saved.music.enabled !== 'undefined' ? !!saved.music.enabled : true,
+				level: sanitize_unit_interval(saved.music && saved.music.level, 1)
+			}
+		};
+	} catch (error) {
+		return JSON.parse(JSON.stringify(defaultAudioCategorySettings));
+	}
+}
+
+let volumeSettings = load_volume_settings();
 let zoomLevel = parseInt(localStorage.zoomLevel || '0');
 const defaultViewerToggleSettings = {
 	observerEnabled: true,
@@ -14,6 +62,8 @@ let viewerToggleSettings = (() => {
 		return Object.assign({}, defaultViewerToggleSettings);
 	}
 })();
+let audioCategorySettings = load_audio_category_settings();
+let settingsModalTab = localStorage.settingsModalTab === 'audio' ? 'audio' : 'video';
 let exportState = null;
 let scrubPreviewFrame = null;
 let isDraggingVolumeSlider = false;
@@ -64,6 +114,66 @@ function format_clip_timestamp(frame) {
 		return hours + 'h' + String(minutes).padStart(2, '0') + 'm' + String(seconds).padStart(2, '0') + 's';
 	}
 	return String(minutes).padStart(2, '0') + 'm' + String(seconds).padStart(2, '0') + 's';
+}
+
+function persist_volume_settings() {
+	localStorage.volumeSettings = JSON.stringify({
+		level: volumeSettings.level,
+		muted: volumeSettings.muted
+	});
+}
+
+function persist_audio_category_settings() {
+	localStorage.audioCategorySettings = JSON.stringify(audioCategorySettings);
+}
+
+function effective_overall_volume() {
+	return volumeSettings.muted ? 0 : sanitize_unit_interval(volumeSettings.level, 0.5);
+}
+
+function effective_category_volume(category) {
+	var settings = audioCategorySettings[category];
+	if (!settings || !settings.enabled) return 0;
+	return effective_overall_volume() * sanitize_unit_interval(settings.level, 1);
+}
+
+function current_audio_setting_state(key) {
+	if (key === 'overall') {
+		return {
+			enabled: !volumeSettings.muted,
+			level: sanitize_unit_interval(volumeSettings.level, 0.5)
+		};
+	}
+	return {
+		enabled: !!audioCategorySettings[key].enabled,
+		level: sanitize_unit_interval(audioCategorySettings[key].level, 1)
+	};
+}
+
+function apply_music_volume() {
+	if (!musicState || !musicState.audio) return;
+	musicState.audio.volume = Math.max(0, Math.min(1, effective_category_volume('music')));
+}
+
+function apply_audio_settings_to_runtime() {
+	if (main_has_been_called && typeof Module !== "undefined" && typeof Module.set_volume === "function") {
+		Module.set_volume(effective_category_volume('combat'));
+	}
+	apply_music_volume();
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
+	}
+}
+
+function update_sound_button_state() {
+	$('#rv-rc-sound').toggleClass('rv-rc-sound', !volumeSettings.muted);
+	$('#rv-rc-sound').toggleClass('rv-rc-muted', volumeSettings.muted);
+}
+
+function update_overall_volume_slider_ui() {
+	$('#volumeOutput').val(Math.round(sanitize_unit_interval(volumeSettings.level, 0.5) * 100)).trigger('change');
+	$('#volume-slider-handle').css('top', '' + (88.8 * sanitize_unit_interval(volumeSettings.level, 0.5)) + '%');
+	update_sound_button_state();
 }
 
 function current_replay_player_names() {
@@ -122,6 +232,10 @@ function persist_export_settings() {
 	});
 }
 
+function persist_settings_modal_tab() {
+	localStorage.settingsModalTab = settingsModalTab;
+}
+
 function populate_export_settings_form() {
 	var settings = current_export_settings();
 	$('#export-width').val(settings.width);
@@ -154,8 +268,61 @@ function reset_export_settings_to_defaults() {
 	populate_export_settings_form();
 }
 
+function populate_audio_settings_form() {
+	['overall', 'combat', 'acknowledgements', 'music'].forEach(function(key) {
+		var state = current_audio_setting_state(key);
+		$('#audio-' + key + '-toggle').toggleClass('is-enabled', state.enabled);
+		$('#audio-' + key + '-toggle').attr('aria-pressed', state.enabled ? 'true' : 'false');
+		$('#audio-' + key + '-slider').val(Math.round(state.level * 100));
+		$('#audio-' + key + '-value').text(Math.round(state.level * 100) + '%');
+	});
+}
+
+function set_settings_modal_tab(tab) {
+	settingsModalTab = tab === 'audio' ? 'audio' : 'video';
+	persist_settings_modal_tab();
+	$('#settings-tab-audio').toggleClass('is-active', settingsModalTab === 'audio');
+	$('#settings-tab-video').toggleClass('is-active', settingsModalTab === 'video');
+	$('[data-settings-panel]').removeClass('is-active').attr('hidden', true);
+	$('[data-settings-panel="' + settingsModalTab + '"]').addClass('is-active').removeAttr('hidden');
+}
+
+function set_audio_setting_enabled(key, enabled) {
+	if (key === 'overall') {
+		volumeSettings.muted = !enabled;
+		persist_volume_settings();
+		update_overall_volume_slider_ui();
+		populate_audio_settings_form();
+		apply_audio_settings_to_runtime();
+		return;
+	}
+	audioCategorySettings[key].enabled = !!enabled;
+	persist_audio_category_settings();
+	populate_audio_settings_form();
+	apply_audio_settings_to_runtime();
+}
+
+function set_audio_setting_level(key, value) {
+	var normalized = sanitize_unit_interval(value / 100, 1);
+	if (key === 'overall') {
+		volumeSettings.level = normalized;
+		volumeSettings.muted = normalized === 0;
+		persist_volume_settings();
+		update_overall_volume_slider_ui();
+		populate_audio_settings_form();
+		apply_audio_settings_to_runtime();
+		return;
+	}
+	audioCategorySettings[key].level = normalized;
+	persist_audio_category_settings();
+	populate_audio_settings_form();
+	apply_audio_settings_to_runtime();
+}
+
 function open_export_settings_modal() {
+	populate_audio_settings_form();
 	populate_export_settings_form();
+	set_settings_modal_tab(settingsModalTab);
 	$('#export_settings').foundation('open');
 }
 
@@ -453,12 +620,25 @@ jQuery(document).ready( function($) {
 	$('#rv-rc-export-settings').on('click', function() {
 		open_export_settings_modal();
 	});
-	$('#export-settings-save').on('click', function() {
-		save_export_settings_from_form();
-		$('#export_settings').foundation('close');
-	});
 	$('#export-settings-reset').on('click', function() {
 		reset_export_settings_to_defaults();
+	});
+	$('#settings-tab-audio').on('click', function() {
+		set_settings_modal_tab('audio');
+	});
+	$('#settings-tab-video').on('click', function() {
+		set_settings_modal_tab('video');
+	});
+	$('#export-width, #export-height, #export-fps, #export-bitrate').on('input change', function() {
+		save_export_settings_from_form();
+	});
+	['overall', 'combat', 'acknowledgements', 'music'].forEach(function(key) {
+		$('#audio-' + key + '-toggle').on('click', function() {
+			set_audio_setting_enabled(key, !current_audio_setting_state(key).enabled);
+		});
+		$('#audio-' + key + '-slider').on('input change', function() {
+			set_audio_setting_level(key, this.value);
+		});
 	});
 	$('#playlist-prev').on('click', function() {
 		load_previous_replay();
@@ -494,20 +674,19 @@ jQuery(document).ready( function($) {
 	$('#volume-slider').on('moved.zf.slider', function() {
 		if (!volumeInitialized) return;
 
+		var previousMuted = volumeSettings.muted;
 		volumeSettings.level = document.getElementById("volumeOutput").value / 100;
-		volumeSettings.muted = (volumeSettings.level == 0);
-		localStorage.volumeSettings = JSON.stringify(volumeSettings);
-
-		if (volumeSettings.muted) {
-			$('#rv-rc-sound').removeClass('rv-rc-sound');
-			$('#rv-rc-sound').addClass('rv-rc-muted');
+		if (volumeSettings.level === 0) {
+			volumeSettings.muted = true;
+		} else if (isDraggingVolumeSlider) {
+			volumeSettings.muted = false;
 		} else {
-			$('#rv-rc-sound').addClass('rv-rc-sound');
-			$('#rv-rc-sound').removeClass('rv-rc-muted');
+			volumeSettings.muted = previousMuted;
 		}
-		if (main_has_been_called) {
-			Module.set_volume(volumeSettings.level);
-		}
+		persist_volume_settings();
+		update_sound_button_state();
+		populate_audio_settings_form();
+		apply_audio_settings_to_runtime();
 	});
 
 	// Perform initial volume setup
@@ -515,19 +694,9 @@ jQuery(document).ready( function($) {
 	// resets it if we do this too early
 	$('#volumeOutput').val(volumeSettings.level * 100).trigger('change');
 	setTimeout(() => {
-		$('#volume-slider-handle').css('top', '' + (88.8 * volumeSettings.level) + '%');
-		if (volumeSettings.muted) {
-			$('#rv-rc-sound').removeClass('rv-rc-sound');
-			$('#rv-rc-sound').addClass('rv-rc-muted');
-		} else {
-			$('#rv-rc-sound').addClass('rv-rc-sound');
-			$('#rv-rc-sound').removeClass('rv-rc-muted');
-		}
-
-		// Also pass to the BW engine if it's already been started (might happen when deep linking)
-		if (main_has_been_called) {
-			Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
-		}
+		update_overall_volume_slider_ui();
+		populate_audio_settings_form();
+		apply_audio_settings_to_runtime();
 		volumeInitialized = true;
 	}, 1000);
 	
@@ -556,6 +725,7 @@ update_force_red_blue_button();
 update_player_vision_buttons();
 update_zoom_buttons();
 apply_infobar_layout();
+populate_audio_settings_form();
 populate_export_settings_form();
 })	
 
@@ -965,16 +1135,11 @@ function toggle_player_vision(playerIndex) {
 }
 
 function toggle_sound() {
-
-	$('#rv-rc-sound').toggleClass('rv-rc-sound');
-	$('#rv-rc-sound').toggleClass('rv-rc-muted');
-
-	volumeSettings.muted = $('#rv-rc-sound').hasClass('rv-rc-muted');
-	localStorage.volumeSettings = JSON.stringify(volumeSettings);
-	
-	if (main_has_been_called) {
-		Module.set_volume(volumeSettings.muted ? 0 : volumeSettings.level);
-	}
+	volumeSettings.muted = !volumeSettings.muted;
+	persist_volume_settings();
+	update_sound_button_state();
+	populate_audio_settings_form();
+	apply_audio_settings_to_runtime();
 }
 
 function best_export_mime_type() {
