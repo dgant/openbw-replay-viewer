@@ -32,7 +32,16 @@ var C_APM = 14;
 var C_MPQ_FILENAMES = ["StarDat.mpq", "BrooDat.mpq", "Patch_rt.mpq"];
 var C_MPQ_BASE_URL = (window.OPENBW_MPQ_BASE_URL || "/bw").replace(/\/$/, "");
 var C_DEFAULT_MPQ_SOURCES = [C_MPQ_BASE_URL + "/STARDAT.MPQ", C_MPQ_BASE_URL + "/BROODAT.MPQ", C_MPQ_BASE_URL + "/patch_rt.mpq"];
-var C_SPECIFY_MPQS_MESSAGE = "Please select StarDat.mpq, BrooDat.mpq and patch_rt.mpq from your StarCraft directory.";
+var C_MUSIC_BASE_URL = (window.OPENBW_MUSIC_BASE_URL || (
+	(window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
+		? "https://dgant.github.io/mpqs/Music"
+		: "/mpqs/Music"
+)).replace(/\/$/, "");
+var C_MUSIC_TRACKS_BY_RACE = {
+	0: ["17. Zerg 1.mp3", "18. Zerg 2.mp3", "19. Zerg 3.mp3", "20. Zerg (Brood War).mp3"],
+	1: ["03. Terran 1.mp3", "04. Terran 2.mp3", "05. Terran 3.mp3", "06. Terran (Brood War).mp3"],
+	2: ["10. Protoss 1.mp3", "11. Protoss 2.mp3", "12. Protoss 3.mp3", "13. Protoss (Brood War).mp3"]
+};
 
 /*****************************
  * Globals
@@ -70,9 +79,19 @@ var files = [];
 var js_read_buffers = [];
 var is_reading = false;
 var is_fetching_default_mpqs = false;
+var mpq_retry_timer = null;
+var mpq_retry_attempt = 0;
+var mpq_status_lines = [];
 
 var players = [];
 var C_BASIL_DATA_BASE_URL = "https://data.basil-ladder.net/";
+var musicState = {
+	audio: null,
+	playlist: [],
+	index: 0,
+	unlocked: false,
+	activeReplayKey: null
+};
 
 /*****************************
  * Functions
@@ -112,21 +131,8 @@ jQuery(document).ready( function($) {
 	install_mobile_camera_controls(canvas);
 	
 	add_drag_and_drop_listeners(document.body, canvas);
-	document.getElementById("mpq_files").addEventListener("change", on_mpq_specify_select, false);
 	document.getElementById("select_rep_file").addEventListener("change", on_rep_file_select, false);
-	
-	
-	// $('#play_demo_button').on('click', function(e){
-		
-	// 	if (has_all_files()) {
-	// 		load_replay_url("/bw/flash_vs_jaedong.rep");
-	// 	}
-	// });
-	
-		$('#specify_mpqs_button').on('click', function(e){
-		
-		print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
-	});
+	register_music_unlock_handlers();
 
 	if (typeof apply_infobar_layout === "function") {
 		apply_infobar_layout();
@@ -196,6 +202,143 @@ function show_loading_replay_screen(url) {
 	set_pregame_dropzone_status("Loading replay", url);
 }
 
+function show_loading_files_screen(message) {
+	var overlay = document.getElementById('pregame-overlay');
+	var notes = document.querySelector('.pregame-notes');
+	if (overlay) {
+		overlay.style.display = 'grid';
+		overlay.classList.add('pregame-loading');
+	}
+	$('body').addClass('pregame-active');
+	if (notes) notes.style.display = 'none';
+	set_pregame_dropzone_status("Loading files", message);
+}
+
+function reset_loading_files_screen() {
+	reset_pregame_dropzone();
+	$('body').removeClass('pregame-active');
+}
+
+function update_mpq_loading_status(extraLine) {
+	if (extraLine) {
+		mpq_status_lines.push(extraLine);
+	}
+	show_loading_files_screen(mpq_status_lines.join('<br>') || 'Preparing bundled files...');
+}
+
+function schedule_mpq_retry() {
+	if (mpq_retry_timer) return;
+	var delayMs = 5000;
+	mpq_retry_timer = setTimeout(function() {
+		mpq_retry_timer = null;
+		fetch_default_mpqs();
+	}, delayMs);
+	update_mpq_loading_status("Retrying bundled files in " + (delayMs / 1000) + "s...");
+}
+
+function shuffle_array(values) {
+	var arr = values.slice();
+	for (var i = arr.length - 1; i > 0; --i) {
+		var j = Math.floor(Math.random() * (i + 1));
+		var temp = arr[i];
+		arr[i] = arr[j];
+		arr[j] = temp;
+	}
+	return arr;
+}
+
+function current_replay_music_key() {
+	return players.map(function(player) {
+		return _player_get_value(player, C_NICK);
+	}).join(':') + ':' + _replay_get_value(5);
+}
+
+function build_music_playlist_for_current_replay() {
+	var raceSet = {};
+	for (var i = 0; i < players.length; ++i) {
+		raceSet[_player_get_value(players[i], C_RACE)] = true;
+	}
+	var tracks = [];
+	Object.keys(raceSet).sort().forEach(function(raceKey) {
+		var raceTracks = C_MUSIC_TRACKS_BY_RACE[raceKey];
+		if (!raceTracks) return;
+		raceTracks.forEach(function(track) {
+			tracks.push(C_MUSIC_BASE_URL + '/' + encodeURIComponent(track));
+		});
+	});
+	return shuffle_array(tracks);
+}
+
+function stop_music_playback() {
+	if (!musicState.audio) return;
+	musicState.audio.pause();
+	musicState.audio.src = '';
+	musicState.audio = null;
+}
+
+function play_next_music_track() {
+	if (!viewerToggleSettings.musicEnabled || !musicState.unlocked) return;
+	if (!musicState.playlist.length) return;
+	if (musicState.audio) {
+		musicState.audio.pause();
+		musicState.audio = null;
+	}
+	var trackUrl = musicState.playlist[musicState.index % musicState.playlist.length];
+	musicState.index = (musicState.index + 1) % musicState.playlist.length;
+	var audio = new Audio(trackUrl);
+	audio.preload = 'auto';
+	audio.addEventListener('ended', function() {
+		play_next_music_track();
+	});
+	musicState.audio = audio;
+	sync_music_playback_state();
+}
+
+function sync_music_playback_state() {
+	if (!viewerToggleSettings.musicEnabled) {
+		stop_music_playback();
+		return;
+	}
+	if (!musicState.unlocked || !musicState.playlist.length) return;
+	if (!musicState.audio) {
+		play_next_music_track();
+		return;
+	}
+	var paused = !main_has_been_called || _replay_get_value(1) !== 0;
+	var ended = main_has_been_called && _replay_get_value(4) > 0 && _replay_get_value(2) >= _replay_get_value(4);
+	if (paused || ended) {
+		musicState.audio.pause();
+		return;
+	}
+	var playPromise = musicState.audio.play();
+	if (playPromise && typeof playPromise.catch === 'function') {
+		playPromise.catch(function() {});
+	}
+}
+
+function initialize_music_for_current_replay() {
+	var replayKey = current_replay_music_key();
+	if (musicState.activeReplayKey === replayKey) {
+		sync_music_playback_state();
+		return;
+	}
+	stop_music_playback();
+	musicState.activeReplayKey = replayKey;
+	musicState.playlist = build_music_playlist_for_current_replay();
+	musicState.index = 0;
+	sync_music_playback_state();
+}
+
+function register_music_unlock_handlers() {
+	var unlock = function() {
+		musicState.unlocked = true;
+		sync_music_playback_state();
+	};
+	window.addEventListener('pointerdown', unlock, true);
+	window.addEventListener('keydown', unlock, true);
+	window.addEventListener('touchstart', unlock, true);
+}
+
 var resource_count = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
 
 function update_graphs(frame) {
@@ -245,6 +388,12 @@ function update_info_bar(frame) {
 	update_handle_position(_replay_get_value(6) * 200);
     update_timer(_replay_get_value(2));
     update_speed(_replay_get_value(0));
+	if (typeof update_play_pause_button === "function") {
+		update_play_pause_button();
+	}
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
+	}
     
     var array_index = Math.round(frame / 16);
     if (array_index >= resource_count[0].length) {
@@ -303,53 +452,6 @@ function on_rep_file_select(e) {
 	
 	var input_files = e.target.files;
 	load_replay_file(input_files, Module.canvas);
-}
-
-function on_mpq_specify_select(e) {
-	
-    var input_files = e.target.files;
-    
-    var unrecognized_files = 0;
-    for (var i = 0; i != input_files.length; ++i) {
-    	
-        var index = index_by_name(input_files[i].name);
-        if (index != -1) {
-            files[index] = input_files[i];
-        } else {
-        	++unrecognized_files;
-        }
-    }
-    
-    var status = "";
-    if (has_all_files()) {
-        status = "Loading, please wait...";
-    } else if (unrecognized_files != 0) {
-        status = C_SPECIFY_MPQS_MESSAGE + "<br/>Unrecognized files selected";
-    } else {
-    	status = C_SPECIFY_MPQS_MESSAGE;
-    }
-
-    var ul = document.getElementById("list");
-    while (ul.firstChild) ul.removeChild(ul.firstChild);
-    for (var i = 0; i != C_MPQ_FILENAMES.length; ++i) {
-        if (files[i]) {
-            var li = document.createElement("li");
-            li.appendChild(document.createTextNode(C_MPQ_FILENAMES[i] + " OK"));
-            ul.appendChild(li);
-        }
-    }
-    
-    print_to_modal("Specify MPQ files", status, true);
-    
-    if (has_all_files()) {
-    	
-    	parse_mpq_files();
-    	store_mpq_in_db();
-    	
-    	// $('#play_demo_button').removeClass('disabled');
-    	$('#select_replay_label').removeClass('disabled');
-    	close_modal();
-    }
 }
 
 function add_drag_and_drop_listeners(element, canvas) {
@@ -883,16 +985,11 @@ function set_modal_presentation(options) {
 	}
 }
 
-function print_to_modal(title, text, mpqspecify, options) {
+function print_to_modal(title, text, options) {
 	set_modal_presentation(options);
 	var showSpinner = title === "Loading files";
 	$('#rv_modal h3').html((showSpinner ? '<span class="loading-spinner" aria-hidden="true"></span>' : '') + title);
 	$('#rv_modal p').html(text);
-	if (mpqspecify) {
-		$('#mpq_specify').css('display', 'inline-block');
-	} else {
-		$('#mpq_specify').css('display', 'none');
-	}
 	
 	$('#rv_modal').foundation('open');
 }
@@ -900,16 +997,6 @@ function print_to_modal(title, text, mpqspecify, options) {
 function close_modal() {
 	set_modal_presentation();
 	$('#rv_modal').foundation('close');
-}
-
-function index_by_name(name) {
-	
-    for (var i = 0; i != C_MPQ_FILENAMES.length; ++i) {
-        if (C_MPQ_FILENAMES[i].toLowerCase() == name.toLowerCase()) {
-        	return i;
-        }
-    }
-    return -1;
 }
 
 function has_all_files() {
@@ -939,6 +1026,12 @@ function js_pre_main_loop() {
 var last_update_frame = 0;
 function js_post_main_loop() {
 	var frame = _replay_get_value(2);
+	if (typeof update_play_pause_button === "function") {
+		update_play_pause_button();
+	}
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
+	}
 	if (Math.abs(frame - last_update_frame) >= (_replay_get_value(1) === 1 ? 1 : Math.max(1, Math.min(8, 4 * _replay_get_value(0))))) {
 	    update_info_bar(frame);
 	    update_info_tab();
@@ -1004,6 +1097,7 @@ function set_db_handle(success_callback) {
 		};
 	} else {
 		console.log("indexedDB not supported.");
+		fetch_default_mpqs();
 	}
 }
 
@@ -1023,7 +1117,7 @@ function get_blob(store, key, file_index, callback) {
 
 		files[file_index] = request.result.blob;
 		console.log("read " + request.result.mpqkp + "; size: " + request.result.blob.length + ": success.");
-		print_to_modal("Loading files", key + ": success.");
+		update_mpq_loading_status(key + ": cached.");
 		callback(file_index, true);
 	};
 }
@@ -1065,6 +1159,8 @@ function load_mpq_from_db() {
 	var transaction = db_handle.transaction(["mpqs"]);
 	var objectStore = transaction.objectStore("mpqs");
 	console.log("attempting to retrieve files from db...");
+	mpq_status_lines = ["Checking cached files..."];
+	show_loading_files_screen(mpq_status_lines[0]);
 	
 	var completed = 0;
 	var callback = function(index, ok) {
@@ -1073,7 +1169,7 @@ function load_mpq_from_db() {
 
 		if (has_all_files()) {
 			console.log("all files read.");
-			close_modal();
+			reset_loading_files_screen();
 			parse_mpq_files();
 		} else {
 			fetch_default_mpqs();
@@ -1089,8 +1185,13 @@ function load_mpq_from_db() {
 function fetch_default_mpqs() {
 	if (is_fetching_default_mpqs || has_all_files()) return;
 	is_fetching_default_mpqs = true;
-
-	print_to_modal("Loading files", "Downloading bundled files...");
+	if (mpq_retry_timer) {
+		clearTimeout(mpq_retry_timer);
+		mpq_retry_timer = null;
+	}
+	mpq_retry_attempt += 1;
+	mpq_status_lines = ["Downloading bundled files...", "Attempt " + mpq_retry_attempt + "."];
+	show_loading_files_screen(mpq_status_lines.join('<br>'));
 
 	var loaded = 0;
 	var failed = false;
@@ -1101,14 +1202,14 @@ function fetch_default_mpqs() {
 
 		is_fetching_default_mpqs = false;
 		if (failed || !has_all_files()) {
-			print_to_modal("Specify MPQ files", C_SPECIFY_MPQS_MESSAGE, true);
+			schedule_mpq_retry();
 			return;
 		}
 
 		store_mpq_in_db();
 		parse_mpq_files();
 		$('#select_replay_label').removeClass('disabled');
-		close_modal();
+		reset_loading_files_screen();
 	};
 
 	for (var i = 0; i < C_MPQ_FILENAMES.length; ++i) {
@@ -1119,11 +1220,17 @@ function fetch_default_mpqs() {
 
 				if (req.status === 200) {
 					files[index] = new File([req.response], C_MPQ_FILENAMES[index]);
-					print_to_modal("Loading files", C_MPQ_FILENAMES[index] + ": success.");
+					update_mpq_loading_status(C_MPQ_FILENAMES[index] + ": success.");
 				} else {
 					failed = true;
 					console.log("Failed to fetch bundled MPQ " + C_DEFAULT_MPQ_SOURCES[index] + ": " + req.status);
+					update_mpq_loading_status(C_MPQ_FILENAMES[index] + ": failed (" + req.status + ").");
 				}
+				on_complete();
+			};
+			req.onerror = function() {
+				failed = true;
+				update_mpq_loading_status(C_MPQ_FILENAMES[index] + ": failed (network error).");
 				on_complete();
 			};
 			req.responseType = "arraybuffer";
@@ -1238,6 +1345,10 @@ function start_replay(buffer, length) {
 			update_player_vision_buttons();
 		}
 	}
+	if (typeof update_play_pause_button === "function") {
+		update_play_pause_button();
+	}
+	initialize_music_for_current_replay();
 }
 
 function on_read_all_done() {

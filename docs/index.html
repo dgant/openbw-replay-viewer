@@ -45,6 +45,7 @@
                 </div>
                 <div id="zoom-buttons" style="position: absolute; bottom: 16px; right: 16px; display: none; z-index:100;">
                     <button class="button secondary small" id="zoom-in" title="Zoom in">+</button>
+                    <button id="rv-rc-music" type="button" class="rv-rc-music" title="Toggle music"></button>
                     <button id="rv-rc-force-colors" type="button" class="rv-rc-force-colors" title="Force red vs blue colors"></button>
                     <button class="button secondary small" id="zoom-out" title="Zoom out">-</button>
                     <button id="rv-rc-observer" type="button" class="rv-rc-observer is-enabled" title="Toggle auto observer"></button>
@@ -499,11 +500,6 @@
     <div class="reveal-overlay" style="display: none;"><div class="reveal" id="rv_modal" data-reveal="2g7eee-reveal" role="dialog" aria-hidden="true" data-yeti-box="rv_modal" data-resize="rv_modal" style="display: none; top: 102px;" tabindex="-1">
                  <h3><span class="loading-spinner" aria-hidden="true"></span>Loading files</h3>
                 <p>Patch_rt.mpq: success.</p>
-                <span id="mpq_specify" style="display: none;">
-                    <input id="mpq_files" type="file" accept=".mpq" multiple="">
-                    <ul id="list">
-                    </ul>
-                </span>
                 <button class="close-button" data-close="" aria-label="Close reveal" type="button">
                     <span aria-hidden="true">×</span>
                 </button>

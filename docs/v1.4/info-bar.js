@@ -1,7 +1,19 @@
 const fps = (1000 / 42);
 let volumeSettings = JSON.parse(localStorage.volumeSettings || '{"level":0.5,"muted":false}');
 let zoomLevel = parseInt(localStorage.zoomLevel || '0');
-let viewerToggleSettings = JSON.parse(localStorage.viewerToggleSettings || '{"observerEnabled":true,"fowEnabled":true,"forceRedBlueEnabled":false}');
+const defaultViewerToggleSettings = {
+	observerEnabled: true,
+	fowEnabled: true,
+	forceRedBlueEnabled: false,
+	musicEnabled: false
+};
+let viewerToggleSettings = (() => {
+	try {
+		return Object.assign({}, defaultViewerToggleSettings, JSON.parse(localStorage.viewerToggleSettings || '{}'));
+	} catch (error) {
+		return Object.assign({}, defaultViewerToggleSettings);
+	}
+})();
 let exportState = null;
 let scrubPreviewFrame = null;
 let isDraggingVolumeSlider = false;
@@ -406,6 +418,9 @@ jQuery(document).ready( function($) {
 	$('#rv-rc-sound').on('click', function() {
 		
 		toggle_sound();
+	});
+	$('#rv-rc-music').on('click', function() {
+		toggle_music();
 	});
 
 	$('#rv-rc-observer').on('click', function() {
@@ -850,6 +865,10 @@ function apply_persisted_viewer_toggle_settings() {
 	update_observer_button();
 	update_fow_button();
 	update_force_red_blue_button();
+	update_music_button();
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
+	}
 }
 
 function show_volume_slider() {
@@ -881,6 +900,10 @@ function update_force_red_blue_button() {
 	$('#rv-rc-force-colors').toggleClass('is-enabled', _force_red_blue_colors_get_value() !== 0);
 }
 
+function update_music_button() {
+	$('#rv-rc-music').toggleClass('is-enabled', !!viewerToggleSettings.musicEnabled);
+}
+
 function toggle_observer() {
 	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function" || typeof Module._observer_set_value !== "function") return;
 	_observer_set_value(_observer_get_value() === 0 ? 1 : 0);
@@ -907,6 +930,15 @@ function toggle_force_red_blue_colors() {
 	if (typeof update_info_bar === "function") {
 		first_frame_played = false;
 		update_info_bar(_replay_get_value(2));
+	}
+}
+
+function toggle_music() {
+	viewerToggleSettings.musicEnabled = !viewerToggleSettings.musicEnabled;
+	persist_viewer_toggle_settings();
+	update_music_button();
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
 	}
 }
 
@@ -1103,21 +1135,30 @@ function start_video_export() {
 }
 
 function toggle_pause() {
-	
-	$('#rv-rc-play').toggleClass('rv-rc-play');
-	$('#rv-rc-play').toggleClass('rv-rc-pause');
-	
 	update_info_tab();
-	
 	_replay_set_value(1, (_replay_get_value(1) + 1)%2);
+	update_play_pause_button();
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
+	}
 }
 
 function ensure_paused() {
 	_replay_set_value(1, 1);
+	update_play_pause_button();
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state();
+	}
 }
 
 function update_speed(speed) {
 	document.getElementById("rv-rc-speed").innerHTML = "speed: " + Number(speed).toFixed(2) + "x";
+}
+
+function update_play_pause_button() {
+	var paused = !main_has_been_called || _replay_get_value(1) !== 0;
+	$('#rv-rc-play').toggleClass('rv-rc-play', paused);
+	$('#rv-rc-play').toggleClass('rv-rc-pause', !paused);
 }
 
 var IMG_URL1 = "images/production_icons/icon ";
