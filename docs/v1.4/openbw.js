@@ -308,8 +308,8 @@ function setValue(ptr, value, type, noSafe) {
 var wasmMemory;
 
 var wasmTable = new WebAssembly.Table({
- "initial": 1318,
- "maximum": 1318 + 0,
+ "initial": 1333,
+ "maximum": 1333 + 0,
  "element": "anyfunc"
 });
 
@@ -512,7 +512,7 @@ function updateGlobalBufferAndViews(buf) {
  Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
 }
 
-var DYNAMIC_BASE = 5417344, DYNAMICTOP_PTR = 174272;
+var DYNAMIC_BASE = 5418032, DYNAMICTOP_PTR = 174960;
 
 var INITIAL_TOTAL_MEMORY = Module["TOTAL_MEMORY"] || 201326592;
 
@@ -1100,6 +1100,16 @@ function openbw_audio_free_wav_js(handle) {
 function openbw_audio_init_js() {
  if (typeof Module.__openbwSounds === "undefined") Module.__openbwSounds = [];
  if (typeof Module.__openbwChannels === "undefined") Module.__openbwChannels = [];
+ if (typeof Module.__openbwAudioUnlocked === "undefined") Module.__openbwAudioUnlocked = false;
+ if (!Module.__openbwAudioUnlockHandlersInstalled) {
+  var unlock = function() {
+   Module.__openbwAudioUnlocked = true;
+  };
+  window.addEventListener("pointerdown", unlock, true);
+  window.addEventListener("keydown", unlock, true);
+  window.addEventListener("touchstart", unlock, true);
+  Module.__openbwAudioUnlockHandlersInstalled = true;
+ }
 }
 
 function openbw_audio_is_playing_js(channel) {
@@ -1123,6 +1133,7 @@ function openbw_audio_load_wav_js(data, size) {
 }
 
 function openbw_audio_play_js(channel, sound_handle, volume) {
+ if (!Module.__openbwAudioUnlocked) return;
  var sounds = Module.__openbwSounds || [];
  var sound = sounds[sound_handle];
  if (!sound || !sound.url) return;
@@ -10598,33 +10609,33 @@ var asmLibraryArg = {
  "e": ___cxa_throw,
  "N": ___lock,
  "je": ___map_file,
- "C": ___syscall221,
+ "D": ___syscall221,
  "pe": ___syscall5,
  "oe": ___syscall54,
  "ie": ___syscall91,
- "u": ___unlock,
+ "v": ___unlock,
  "fe": __embind_register_bool,
- "w": __embind_register_class,
+ "x": __embind_register_class,
  "Vd": __embind_register_class_constructor,
  "k": __embind_register_class_function,
- "B": __embind_register_class_property,
+ "C": __embind_register_class_property,
  "de": __embind_register_emval,
  "qa": __embind_register_float,
- "K": __embind_register_function,
+ "n": __embind_register_function,
  "m": __embind_register_integer,
  "l": __embind_register_memory_view,
  "ra": __embind_register_std_string,
  "ee": __embind_register_std_wstring,
  "ge": __embind_register_void,
  "a": __emval_decref,
- "J": __emval_incref,
- "r": __emval_new_array,
+ "K": __emval_incref,
+ "s": __emval_new_array,
  "j": __emval_new_cstring,
- "A": __emval_new_object,
+ "B": __emval_new_object,
  "i": __emval_set_property,
  "h": __emval_take_value,
- "t": _abort,
- "v": _clock_gettime,
+ "u": _abort,
+ "w": _clock_gettime,
  "va": _dlclose,
  "wa": _dlerror,
  "T": _dlsym,
@@ -10649,8 +10660,8 @@ var asmLibraryArg = {
  "g": _emscripten_asm_const_iii,
  "xa": _emscripten_exit_fullscreen,
  "za": _emscripten_exit_pointerlock,
- "x": _emscripten_get_device_pixel_ratio,
- "p": _emscripten_get_element_css_size,
+ "y": _emscripten_get_device_pixel_ratio,
+ "q": _emscripten_get_element_css_size,
  "R": _emscripten_get_gamepad_status,
  "ua": _emscripten_get_num_gamepads,
  "Pb": _emscripten_get_preloaded_image_data_from_FILE,
@@ -10815,15 +10826,15 @@ var asmLibraryArg = {
  "Jd": _emscripten_glVertexAttribDivisorANGLE,
  "_a": _emscripten_glVertexAttribPointer,
  "Za": _emscripten_glViewport,
- "o": _emscripten_longjmp,
+ "p": _emscripten_longjmp,
  "be": _emscripten_memcpy_big,
  "ya": _emscripten_request_fullscreen_strategy,
  "ma": _emscripten_request_pointerlock,
  "ce": _emscripten_resize_heap,
  "S": _emscripten_sample_gamepad_data,
  "ea": _emscripten_set_blur_callback_on_thread,
- "s": _emscripten_set_canvas_element_size,
- "E": _emscripten_set_element_css_size,
+ "t": _emscripten_set_canvas_element_size,
+ "F": _emscripten_set_element_css_size,
  "fa": _emscripten_set_focus_callback_on_thread,
  "W": _emscripten_set_fullscreenchange_callback_on_thread,
  "Q": _emscripten_set_gamepadconnected_callback_on_thread,
@@ -10853,18 +10864,18 @@ var asmLibraryArg = {
  "Xa": _fd_seek,
  "qe": _fd_write,
  "b": _getTempRet0,
- "D": _gettimeofday,
+ "E": _gettimeofday,
  "Sa": invoke_i,
- "I": invoke_ii,
- "y": invoke_iii,
- "G": invoke_iiii,
- "H": invoke_iiiii,
+ "J": invoke_ii,
+ "z": invoke_iii,
+ "H": invoke_iiii,
+ "I": invoke_iiiii,
  "Va": invoke_iiiiii,
  "Ua": invoke_iiiiiiiii,
  "oa": invoke_iiiiiiiiii,
  "Ya": invoke_jiji,
- "q": invoke_vi,
- "z": invoke_vii,
+ "r": invoke_vi,
+ "A": invoke_vii,
  "pa": invoke_viii,
  "O": invoke_viiii,
  "memory": wasmMemory,
@@ -10876,9 +10887,9 @@ var asmLibraryArg = {
  "Ec": openbw_audio_play_js,
  "Ta": openbw_audio_set_volume_js,
  "me": _round,
- "F": _saveSetjmp,
+ "G": _saveSetjmp,
  "c": _setTempRet0,
- "n": _sigaction,
+ "o": _sigaction,
  "M": _signal,
  "he": _strftime_l,
  "table": wasmTable,

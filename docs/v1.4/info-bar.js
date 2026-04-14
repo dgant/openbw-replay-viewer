@@ -22,7 +22,7 @@ function load_volume_settings() {
 const defaultAudioCategorySettings = {
 	combat: { enabled: true, level: 1 },
 	acknowledgements: { enabled: true, level: 1 },
-	music: { enabled: true, level: 1 }
+	music: { enabled: true, level: 0.25 }
 };
 
 function load_audio_category_settings() {
@@ -39,7 +39,7 @@ function load_audio_category_settings() {
 			},
 			music: {
 				enabled: saved.music && typeof saved.music.enabled !== 'undefined' ? !!saved.music.enabled : true,
-				level: sanitize_unit_interval(saved.music && saved.music.level, 1)
+				level: sanitize_unit_interval(saved.music && saved.music.level, 0.25)
 			}
 		};
 	} catch (error) {
@@ -137,6 +137,12 @@ function effective_category_volume(category) {
 	return effective_overall_volume() * sanitize_unit_interval(settings.level, 1);
 }
 
+function mix_category_volume(category) {
+	var settings = audioCategorySettings[category];
+	if (!settings || !settings.enabled) return 0;
+	return sanitize_unit_interval(settings.level, 1);
+}
+
 function current_audio_setting_state(key) {
 	if (key === 'overall') {
 		return {
@@ -156,8 +162,16 @@ function apply_music_volume() {
 }
 
 function apply_audio_settings_to_runtime() {
-	if (main_has_been_called && typeof Module !== "undefined" && typeof Module.set_volume === "function") {
-		Module.set_volume(effective_category_volume('combat'));
+	if (main_has_been_called && typeof Module !== "undefined") {
+		if (typeof Module.set_volume === "function") {
+			Module.set_volume(effective_overall_volume());
+		}
+		if (typeof Module.set_combat_volume === "function") {
+			Module.set_combat_volume(mix_category_volume('combat'));
+		}
+		if (typeof Module.set_acknowledgement_volume === "function") {
+			Module.set_acknowledgement_volume(mix_category_volume('acknowledgements'));
+		}
 	}
 	apply_music_volume();
 	if (typeof sync_music_playback_state === "function") {
@@ -268,10 +282,25 @@ function reset_export_settings_to_defaults() {
 	populate_export_settings_form();
 }
 
+function reset_audio_settings_to_defaults() {
+	volumeSettings = load_volume_settings();
+	volumeSettings.level = 0.5;
+	volumeSettings.muted = false;
+	audioCategorySettings = JSON.parse(JSON.stringify(defaultAudioCategorySettings));
+	delete localStorage.volumeSettings;
+	delete localStorage.audioCategorySettings;
+	persist_volume_settings();
+	persist_audio_category_settings();
+	update_overall_volume_slider_ui();
+	populate_audio_settings_form();
+	apply_audio_settings_to_runtime();
+}
+
 function populate_audio_settings_form() {
 	['overall', 'combat', 'acknowledgements', 'music'].forEach(function(key) {
 		var state = current_audio_setting_state(key);
-		$('#audio-' + key + '-toggle').toggleClass('is-enabled', state.enabled);
+		$('#audio-' + key + '-toggle').toggleClass('rv-rc-sound', state.enabled);
+		$('#audio-' + key + '-toggle').toggleClass('rv-rc-muted', !state.enabled);
 		$('#audio-' + key + '-toggle').attr('aria-pressed', state.enabled ? 'true' : 'false');
 		$('#audio-' + key + '-slider').val(Math.round(state.level * 100));
 		$('#audio-' + key + '-value').text(Math.round(state.level * 100) + '%');
@@ -622,6 +651,9 @@ jQuery(document).ready( function($) {
 	});
 	$('#export-settings-reset').on('click', function() {
 		reset_export_settings_to_defaults();
+	});
+	$('#audio-settings-reset').on('click', function() {
+		reset_audio_settings_to_defaults();
 	});
 	$('#settings-tab-audio').on('click', function() {
 		set_settings_modal_tab('audio');

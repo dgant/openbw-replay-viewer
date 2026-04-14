@@ -7880,39 +7880,51 @@ body.pregame-active #info-dock .info-dock-header {
     top: 0.85rem; }
   #export_settings .settings-tab-buttons {
     display: flex;
-    gap: 0.5rem;
+    gap: 1rem;
+    border-bottom: 1px solid #50617a;
     margin-bottom: 1rem; }
-  #export_settings .settings-tab-buttons .button.success {
+  #export_settings .settings-tab-button {
     background-color: transparent;
     color: #9aa9bd;
-    border: 1px solid #50617a;
-    margin-bottom: 0; }
-  #export_settings .settings-tab-buttons .button.success.is-active {
-    background-color: #3adb76;
-    color: #fff;
-    border-color: transparent; }
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin: 0 0 -1px;
+    padding: 0 0 0.6rem;
+    font-size: 0.95rem;
+    font-weight: 700; }
+  #export_settings .settings-tab-button.is-active {
+    color: #ffffff;
+    border-bottom-color: #3adb76; }
   #export_settings .settings-panel[hidden] {
     display: none !important; }
   #export_settings .settings-audio-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 9rem) 36px minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 0.75rem; }
+  #export_settings .settings-audio-label {
+    color: #d7e3f4;
+    line-height: 1.2; }
   #export_settings .settings-audio-toggle {
-    min-width: 8.5rem;
-    justify-content: center;
     margin-bottom: 0;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    border: 0;
     background-color: transparent;
-    color: #9aa9bd;
-    border: 1px solid #50617a; }
-  #export_settings .settings-audio-toggle.is-enabled {
-    background-color: #3adb76;
-    color: #fff;
-    border-color: transparent; }
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain; }
+  #export_settings .settings-audio-toggle.rv-rc-sound {
+    background-image: url("images/player_icons/speaker.svg"); }
+  #export_settings .settings-audio-toggle.rv-rc-muted {
+    background-image: url("images/player_icons/mute.svg"); }
   #export_settings .settings-audio-slider {
     width: 100%;
     margin: 0;
+    display: block;
+    align-self: center;
     accent-color: #3adb76; }
   #export_settings .settings-audio-value {
     min-width: 3rem;

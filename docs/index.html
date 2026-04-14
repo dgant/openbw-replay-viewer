@@ -530,29 +530,36 @@
         <div class="reveal" id="export_settings" data-reveal role="dialog" aria-hidden="true" tabindex="-1">
             <h3>Settings</h3>
             <div class="settings-tab-buttons">
-                <button id="settings-tab-audio" type="button" class="button success small">Audio</button>
-                <button id="settings-tab-video" type="button" class="button success small">Video Clips</button>
+                <button id="settings-tab-audio" type="button" class="settings-tab-button is-active">Audio</button>
+                <button id="settings-tab-video" type="button" class="settings-tab-button">Video Clips</button>
             </div>
             <div class="settings-panel" data-settings-panel="audio" hidden>
                 <div class="settings-audio-row">
-                    <button id="audio-overall-toggle" type="button" class="button success small settings-audio-toggle">Overall</button>
+                    <span class="settings-audio-label">Overall</span>
+                    <button id="audio-overall-toggle" type="button" class="settings-audio-toggle rv-rc-sound" aria-label="Toggle overall audio" aria-pressed="true"></button>
                     <input id="audio-overall-slider" class="settings-audio-slider" type="range" min="0" max="100" step="1">
                     <span id="audio-overall-value" class="settings-audio-value">100%</span>
                 </div>
                 <div class="settings-audio-row">
-                    <button id="audio-combat-toggle" type="button" class="button success small settings-audio-toggle">Combat</button>
+                    <span class="settings-audio-label">Combat</span>
+                    <button id="audio-combat-toggle" type="button" class="settings-audio-toggle rv-rc-sound" aria-label="Toggle combat audio" aria-pressed="true"></button>
                     <input id="audio-combat-slider" class="settings-audio-slider" type="range" min="0" max="100" step="1">
                     <span id="audio-combat-value" class="settings-audio-value">100%</span>
                 </div>
                 <div class="settings-audio-row">
-                    <button id="audio-acknowledgements-toggle" type="button" class="button success small settings-audio-toggle">Acknowledgements</button>
+                    <span class="settings-audio-label">Acknowledgements</span>
+                    <button id="audio-acknowledgements-toggle" type="button" class="settings-audio-toggle rv-rc-sound" aria-label="Toggle acknowledgement audio" aria-pressed="true"></button>
                     <input id="audio-acknowledgements-slider" class="settings-audio-slider" type="range" min="0" max="100" step="1">
                     <span id="audio-acknowledgements-value" class="settings-audio-value">100%</span>
                 </div>
                 <div class="settings-audio-row">
-                    <button id="audio-music-toggle" type="button" class="button success small settings-audio-toggle">Music</button>
+                    <span class="settings-audio-label">Music</span>
+                    <button id="audio-music-toggle" type="button" class="settings-audio-toggle rv-rc-sound" aria-label="Toggle music audio" aria-pressed="true"></button>
                     <input id="audio-music-slider" class="settings-audio-slider" type="range" min="0" max="100" step="1">
                     <span id="audio-music-value" class="settings-audio-value">100%</span>
+                </div>
+                <div class="button-group">
+                    <button id="audio-settings-reset" type="button" class="button success">Reset</button>
                 </div>
             </div>
             <div class="settings-panel" data-settings-panel="video" hidden>
