@@ -308,8 +308,8 @@ function setValue(ptr, value, type, noSafe) {
 var wasmMemory;
 
 var wasmTable = new WebAssembly.Table({
- "initial": 1333,
- "maximum": 1333 + 0,
+ "initial": 1334,
+ "maximum": 1334 + 0,
  "element": "anyfunc"
 });
 
@@ -512,7 +512,7 @@ function updateGlobalBufferAndViews(buf) {
  Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
 }
 
-var DYNAMIC_BASE = 5418032, DYNAMICTOP_PTR = 174960;
+var DYNAMIC_BASE = 5418064, DYNAMICTOP_PTR = 174992;
 
 var INITIAL_TOTAL_MEMORY = Module["TOTAL_MEMORY"] || 201326592;
 
@@ -10621,8 +10621,8 @@ var asmLibraryArg = {
  "C": __embind_register_class_property,
  "de": __embind_register_emval,
  "qa": __embind_register_float,
- "n": __embind_register_function,
- "m": __embind_register_integer,
+ "m": __embind_register_function,
+ "n": __embind_register_integer,
  "l": __embind_register_memory_view,
  "ra": __embind_register_std_string,
  "ee": __embind_register_std_wstring,
