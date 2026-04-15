@@ -93,7 +93,7 @@ var musicState = {
 	activeReplayKey: null
 };
 var viewportAlertState = {
-	lastNuclearLaunchCount: 0,
+	lastNuclearLaunchSoundCount: 0,
 	text: '',
 	hideAt: 0
 };
@@ -1095,18 +1095,21 @@ function update_viewport_alert() {
 	var alert = $('#viewport-alert');
 	var hasReplay = main_has_been_called && typeof _replay_get_value === "function" && _replay_get_value(4) > 0;
 	if (!hasReplay) {
-		viewportAlertState.lastNuclearLaunchCount = 0;
+		viewportAlertState.lastNuclearLaunchSoundCount = 0;
 		viewportAlertState.text = '';
 		viewportAlertState.hideAt = 0;
 		alert.removeClass('is-visible').text('');
 		return;
 	}
-	if (typeof Module !== "undefined" && typeof Module.get_nuclear_launch_alert_count === "function") {
-		var nuclearLaunchCount = Module.get_nuclear_launch_alert_count();
-		if (nuclearLaunchCount > viewportAlertState.lastNuclearLaunchCount) {
+	if (typeof Module !== "undefined" && typeof Module.get_acknowledgement_sound_play_count === "function") {
+		var nuclearLaunchSoundCount =
+			Module.get_acknowledgement_sound_play_count(127) +
+			Module.get_acknowledgement_sound_play_count(128) +
+			Module.get_acknowledgement_sound_play_count(129);
+		if (nuclearLaunchSoundCount > viewportAlertState.lastNuclearLaunchSoundCount) {
 			show_viewport_alert('Nuclear launch detected', 4500);
 		}
-		viewportAlertState.lastNuclearLaunchCount = nuclearLaunchCount;
+		viewportAlertState.lastNuclearLaunchSoundCount = nuclearLaunchSoundCount;
 	}
 	if (viewportAlertState.hideAt && Date.now() >= viewportAlertState.hideAt) {
 		viewportAlertState.hideAt = 0;
