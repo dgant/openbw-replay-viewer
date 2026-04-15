@@ -185,8 +185,15 @@ function update_sound_button_state() {
 }
 
 function update_overall_volume_slider_ui() {
-	$('#volumeOutput').val(Math.round(sanitize_unit_interval(volumeSettings.level, 0.5) * 100)).trigger('change');
-	$('#volume-slider-handle').css('top', '' + (88.8 * sanitize_unit_interval(volumeSettings.level, 0.5)) + '%');
+	var percent = Math.round(sanitize_unit_interval(volumeSettings.level, 0.5) * 100);
+	$('#volumeOutput').val(percent).trigger('change');
+	var sliderPlugin = $('#volume-slider').data('zfPlugin');
+	if (sliderPlugin && sliderPlugin.$handle) {
+		sliderPlugin._setHandlePos(sliderPlugin.$handle, percent, true);
+	} else {
+		$('#volume-slider-handle').css('top', '' + (88.8 * sanitize_unit_interval(volumeSettings.level, 0.5)) + '%');
+		$('#volume-slider-handle').attr('aria-valuenow', percent);
+	}
 	update_sound_button_state();
 }
 
