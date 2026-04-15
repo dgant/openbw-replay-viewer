@@ -6787,6 +6787,28 @@ body#tinymce {
           flex: 1;
   position: relative; }
 
+#viewport-alert {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%);
+  max-width: min(80%, 42rem);
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 214, 108, 0.55);
+  border-radius: 4px;
+  background: rgba(18, 22, 30, 0.88);
+  color: #ffd66c;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease;
+  z-index: 15; }
+  #viewport-alert.is-visible {
+    opacity: 1; }
+
 #canvas {
   display: block;
   padding: 0px 0px 0px 0px;

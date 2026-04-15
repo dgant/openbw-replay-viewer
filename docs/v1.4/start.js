@@ -92,6 +92,11 @@ var musicState = {
 	unlocked: false,
 	activeReplayKey: null
 };
+var viewportAlertState = {
+	lastNuclearLaunchCount: 0,
+	text: '',
+	hideAt: 0
+};
 
 /*****************************
  * Functions
@@ -1040,6 +1045,7 @@ function js_post_main_loop() {
 	if (typeof sync_music_playback_state === "function") {
 		sync_music_playback_state();
 	}
+	update_viewport_alert();
 	if (Math.abs(frame - last_update_frame) >= (_replay_get_value(1) === 1 ? 1 : Math.max(1, Math.min(8, 4 * _replay_get_value(0))))) {
 	    update_info_bar(frame);
 	    update_info_tab();
@@ -1077,6 +1083,36 @@ function js_load_done() {
     js_read_buffers = null;
     $('#pregame-overlay').hide();
     $('body').removeClass('pregame-active');
+}
+
+function show_viewport_alert(text, durationMs) {
+	viewportAlertState.text = text;
+	viewportAlertState.hideAt = Date.now() + durationMs;
+	$('#viewport-alert').text(text).addClass('is-visible');
+}
+
+function update_viewport_alert() {
+	var alert = $('#viewport-alert');
+	var hasReplay = main_has_been_called && typeof _replay_get_value === "function" && _replay_get_value(4) > 0;
+	if (!hasReplay) {
+		viewportAlertState.lastNuclearLaunchCount = 0;
+		viewportAlertState.text = '';
+		viewportAlertState.hideAt = 0;
+		alert.removeClass('is-visible').text('');
+		return;
+	}
+	if (typeof Module !== "undefined" && typeof Module.get_nuclear_launch_alert_count === "function") {
+		var nuclearLaunchCount = Module.get_nuclear_launch_alert_count();
+		if (nuclearLaunchCount > viewportAlertState.lastNuclearLaunchCount) {
+			show_viewport_alert('Nuclear launch detected', 4500);
+		}
+		viewportAlertState.lastNuclearLaunchCount = nuclearLaunchCount;
+	}
+	if (viewportAlertState.hideAt && Date.now() >= viewportAlertState.hideAt) {
+		viewportAlertState.hideAt = 0;
+		viewportAlertState.text = '';
+		alert.removeClass('is-visible').text('');
+	}
 }
 
 /*****************************
