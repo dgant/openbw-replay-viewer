@@ -308,8 +308,8 @@ function setValue(ptr, value, type, noSafe) {
 var wasmMemory;
 
 var wasmTable = new WebAssembly.Table({
- "initial": 1340,
- "maximum": 1340 + 0,
+ "initial": 1353,
+ "maximum": 1353 + 0,
  "element": "anyfunc"
 });
 
@@ -512,7 +512,7 @@ function updateGlobalBufferAndViews(buf) {
  Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
 }
 
-var DYNAMIC_BASE = 5418176, DYNAMICTOP_PTR = 175104;
+var DYNAMIC_BASE = 5418816, DYNAMICTOP_PTR = 175744;
 
 var INITIAL_TOTAL_MEMORY = Module["TOTAL_MEMORY"] || 201326592;
 
@@ -10984,19 +10984,19 @@ var _load_replay = Module["_load_replay"] = function() {
  return Module["asm"]["Le"].apply(null, arguments);
 };
 
-var _main = Module["_main"] = function() {
+var _malloc = Module["_malloc"] = function() {
  return Module["asm"]["Me"].apply(null, arguments);
 };
 
-var ___errno_location = Module["___errno_location"] = function() {
+var _main = Module["_main"] = function() {
  return Module["asm"]["Ne"].apply(null, arguments);
 };
 
-var _free = Module["_free"] = function() {
+var ___errno_location = Module["___errno_location"] = function() {
  return Module["asm"]["Oe"].apply(null, arguments);
 };
 
-var _malloc = Module["_malloc"] = function() {
+var _free = Module["_free"] = function() {
  return Module["asm"]["Pe"].apply(null, arguments);
 };
 
@@ -11124,35 +11124,35 @@ var dynCall_d = Module["dynCall_d"] = function() {
  return Module["asm"]["tf"].apply(null, arguments);
 };
 
-var dynCall_v = Module["dynCall_v"] = function() {
+var dynCall_viijii = Module["dynCall_viijii"] = function() {
  return Module["asm"]["uf"].apply(null, arguments);
 };
 
-var dynCall_ji = Module["dynCall_ji"] = function() {
+var dynCall_v = Module["dynCall_v"] = function() {
  return Module["asm"]["vf"].apply(null, arguments);
 };
 
-var dynCall_iiiiidii = Module["dynCall_iiiiidii"] = function() {
+var dynCall_ji = Module["dynCall_ji"] = function() {
  return Module["asm"]["wf"].apply(null, arguments);
 };
 
-var dynCall_viiiiiii = Module["dynCall_viiiiiii"] = function() {
+var dynCall_iiiiidii = Module["dynCall_iiiiidii"] = function() {
  return Module["asm"]["xf"].apply(null, arguments);
 };
 
-var dynCall_viiiiiiiiiii = Module["dynCall_viiiiiiiiiii"] = function() {
+var dynCall_viiiiiii = Module["dynCall_viiiiiii"] = function() {
  return Module["asm"]["yf"].apply(null, arguments);
 };
 
-var dynCall_iiiiiiii = Module["dynCall_iiiiiiii"] = function() {
+var dynCall_viiiiiiiiiii = Module["dynCall_viiiiiiiiiii"] = function() {
  return Module["asm"]["zf"].apply(null, arguments);
 };
 
-var dynCall_iidiiii = Module["dynCall_iidiiii"] = function() {
+var dynCall_iiiiiiii = Module["dynCall_iiiiiiii"] = function() {
  return Module["asm"]["Af"].apply(null, arguments);
 };
 
-var dynCall_viijii = Module["dynCall_viijii"] = function() {
+var dynCall_iidiiii = Module["dynCall_iidiiii"] = function() {
  return Module["asm"]["Bf"].apply(null, arguments);
 };
 

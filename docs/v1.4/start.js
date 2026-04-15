@@ -92,6 +92,7 @@ var musicState = {
 	unlocked: false,
 	activeReplayKey: null
 };
+var viewerWindowFocused = true;
 var viewportAlertState = {
 	lastNuclearLaunchSoundCount: 0,
 	text: '',
@@ -138,6 +139,7 @@ jQuery(document).ready( function($) {
 	add_drag_and_drop_listeners(document.body, canvas);
 	document.getElementById("select_rep_file").addEventListener("change", on_rep_file_select, false);
 	register_music_unlock_handlers();
+	register_playback_visibility_handlers();
 
 	if (typeof apply_infobar_layout === "function") {
 		apply_infobar_layout();
@@ -276,6 +278,14 @@ function stop_music_playback() {
 	musicState.audio = null;
 }
 
+function is_viewer_playback_active() {
+	if (document.hidden || !viewerWindowFocused) return false;
+	if (!main_has_been_called || typeof _replay_get_value !== "function") return false;
+	if (_replay_get_value(1) !== 0) return false;
+	if (_replay_get_value(4) > 0 && _replay_get_value(2) >= _replay_get_value(4)) return false;
+	return true;
+}
+
 function play_next_music_track() {
 	if (!viewerToggleSettings.musicEnabled || !musicState.unlocked) return;
 	if (!musicState.playlist.length) return;
@@ -311,9 +321,7 @@ function sync_music_playback_state() {
 		musicState.audio.pause();
 		return;
 	}
-	var paused = !main_has_been_called || _replay_get_value(1) !== 0;
-	var ended = main_has_been_called && _replay_get_value(4) > 0 && _replay_get_value(2) >= _replay_get_value(4);
-	if (paused || ended) {
+	if (!is_viewer_playback_active()) {
 		musicState.audio.pause();
 		return;
 	}
@@ -350,6 +358,31 @@ function register_music_unlock_handlers() {
 	window.addEventListener('pointerdown', unlock, true);
 	window.addEventListener('keydown', unlock, true);
 	window.addEventListener('touchstart', unlock, true);
+}
+
+function register_playback_visibility_handlers() {
+	var syncPlaybackState = function() {
+		if (typeof sync_music_playback_state === "function") {
+			sync_music_playback_state();
+		}
+	};
+	document.addEventListener('visibilitychange', syncPlaybackState, true);
+	window.addEventListener('focus', function() {
+		viewerWindowFocused = true;
+		syncPlaybackState();
+	}, true);
+	window.addEventListener('blur', function() {
+		viewerWindowFocused = false;
+		syncPlaybackState();
+	}, true);
+	window.addEventListener('pageshow', function() {
+		viewerWindowFocused = true;
+		syncPlaybackState();
+	}, true);
+	window.addEventListener('pagehide', function() {
+		viewerWindowFocused = false;
+		syncPlaybackState();
+	}, true);
 }
 
 var resource_count = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
@@ -1106,6 +1139,17 @@ function position_viewport_alert() {
 	alert.style.top = baselineY + 'px';
 }
 
+function format_frame_time(frame) {
+	var sec_num = frame * 42 / 1000;
+	var hours = Math.floor(sec_num / 3600);
+	var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+	var seconds = Math.floor(sec_num - (hours * 3600) - (minutes * 60));
+	if (hours < 10) { hours = "0" + hours; }
+	if (minutes < 10) { minutes = "0" + minutes; }
+	if (seconds < 10) { seconds = "0" + seconds; }
+	return hours > 0 ? (hours + ':' + minutes + ':' + seconds) : (minutes + ':' + seconds);
+}
+
 function show_viewport_alert(text, durationMs) {
 	viewportAlertState.text = text;
 	viewportAlertState.hideAt = Date.now() + durationMs;
@@ -1121,6 +1165,14 @@ function update_viewport_alert() {
 		viewportAlertState.text = '';
 		viewportAlertState.hideAt = 0;
 		alert.removeClass('is-visible').text('');
+		return;
+	}
+	var currentFrame = _replay_get_value(2);
+	var targetFrame = _replay_get_value(3);
+	if (currentFrame < targetFrame) {
+		var fastForwardText = 'Fast-forwarding to ' + format_frame_time(targetFrame);
+		alert.text(fastForwardText).addClass('is-visible');
+		position_viewport_alert();
 		return;
 	}
 	if (typeof Module !== "undefined" && typeof Module.get_acknowledgement_sound_play_count === "function") {
@@ -1139,6 +1191,8 @@ function update_viewport_alert() {
 		alert.removeClass('is-visible').text('');
 	} else if (viewportAlertState.hideAt) {
 		position_viewport_alert();
+	} else if (alert.hasClass('is-visible')) {
+		alert.removeClass('is-visible').text('');
 	}
 }
 
