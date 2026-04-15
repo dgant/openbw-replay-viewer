@@ -957,6 +957,9 @@ function resize_canvas(canvas) {
 	var ctx = document.getElementById("graphs_tab");
 	ctx.style.width = "70%";
 	ctx.style.height = "70%";
+	if (viewportAlertState.hideAt) {
+		position_viewport_alert();
+	}
 	return true;
 }
 
@@ -1085,10 +1088,29 @@ function js_load_done() {
     $('body').removeClass('pregame-active');
 }
 
+function position_viewport_alert() {
+	var alert = document.getElementById('viewport-alert');
+	var canvasArea = document.getElementById('canvas-area');
+	var canvas = typeof Module !== "undefined" ? Module.canvas : null;
+	if (!alert || !canvasArea || !canvas) {
+		return;
+	}
+	var canvasRect = canvas.getBoundingClientRect();
+	var areaRect = canvasArea.getBoundingClientRect();
+	if (!canvasRect.width || !canvasRect.height || !areaRect.width || !areaRect.height) {
+		return;
+	}
+	var centerX = canvasRect.left - areaRect.left + canvasRect.width / 2;
+	var baselineY = canvasRect.top - areaRect.top + canvasRect.height - 24;
+	alert.style.left = centerX + 'px';
+	alert.style.top = baselineY + 'px';
+}
+
 function show_viewport_alert(text, durationMs) {
 	viewportAlertState.text = text;
 	viewportAlertState.hideAt = Date.now() + durationMs;
 	$('#viewport-alert').text(text).addClass('is-visible');
+	position_viewport_alert();
 }
 
 function update_viewport_alert() {
@@ -1115,6 +1137,8 @@ function update_viewport_alert() {
 		viewportAlertState.hideAt = 0;
 		viewportAlertState.text = '';
 		alert.removeClass('is-visible').text('');
+	} else if (viewportAlertState.hideAt) {
+		position_viewport_alert();
 	}
 }
 

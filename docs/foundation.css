@@ -6788,24 +6788,25 @@ body#tinymce {
   position: relative; }
 
 #viewport-alert {
-  position: absolute;
-  left: 50%;
-  bottom: 34px;
-  transform: translateX(-50%);
-  max-width: min(80%, 42rem);
-  padding: 8px 16px;
-  border: 1px solid rgba(255, 214, 108, 0.55);
-  border-radius: 4px;
-  background: rgba(18, 22, 30, 0.88);
-  color: #ffd66c;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-align: center;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 140ms ease;
-  z-index: 15; }
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -100%);
+    max-width: min(80%, 42rem);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 140ms ease;
+    z-index: 15; }
   #viewport-alert.is-visible {
     opacity: 1; }
 
