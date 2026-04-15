@@ -94,7 +94,8 @@ var musicState = {
 };
 var viewerWindowFocused = true;
 var viewportAlertState = {
-	lastNuclearLaunchSoundCount: 0,
+	lastNuclearLaunchAlertCount: 0,
+	pendingNuclearLaunch: false,
 	text: '',
 	hideAt: 0
 };
@@ -278,6 +279,12 @@ function stop_music_playback() {
 	musicState.audio = null;
 }
 
+function is_music_enabled() {
+	return !!(typeof audioCategorySettings !== "undefined" &&
+		audioCategorySettings.music &&
+		audioCategorySettings.music.enabled);
+}
+
 function is_viewer_playback_active() {
 	if (document.hidden || !viewerWindowFocused) return false;
 	if (!main_has_been_called || typeof _replay_get_value !== "function") return false;
@@ -287,7 +294,7 @@ function is_viewer_playback_active() {
 }
 
 function play_next_music_track() {
-	if (!viewerToggleSettings.musicEnabled || !musicState.unlocked) return;
+	if (!is_music_enabled() || !musicState.unlocked) return;
 	if (!musicState.playlist.length) return;
 	if (musicState.audio) {
 		musicState.audio.pause();
@@ -308,7 +315,7 @@ function play_next_music_track() {
 }
 
 function sync_music_playback_state() {
-	if (!viewerToggleSettings.musicEnabled) {
+	if (!is_music_enabled()) {
 		stop_music_playback();
 		return;
 	}
@@ -1161,7 +1168,8 @@ function update_viewport_alert() {
 	var alert = $('#viewport-alert');
 	var hasReplay = main_has_been_called && typeof _replay_get_value === "function" && _replay_get_value(4) > 0;
 	if (!hasReplay) {
-		viewportAlertState.lastNuclearLaunchSoundCount = 0;
+		viewportAlertState.lastNuclearLaunchAlertCount = 0;
+		viewportAlertState.pendingNuclearLaunch = false;
 		viewportAlertState.text = '';
 		viewportAlertState.hideAt = 0;
 		alert.removeClass('is-visible').text('');
@@ -1169,21 +1177,22 @@ function update_viewport_alert() {
 	}
 	var currentFrame = _replay_get_value(2);
 	var targetFrame = _replay_get_value(3);
+	if (typeof Module !== "undefined" && typeof Module.get_nuclear_launch_alert_count === "function") {
+		var nuclearLaunchAlertCount = Module.get_nuclear_launch_alert_count();
+		if (nuclearLaunchAlertCount > viewportAlertState.lastNuclearLaunchAlertCount) {
+			viewportAlertState.pendingNuclearLaunch = true;
+		}
+		viewportAlertState.lastNuclearLaunchAlertCount = nuclearLaunchAlertCount;
+	}
 	if (currentFrame < targetFrame) {
 		var fastForwardText = 'Fast-forwarding to ' + format_frame_time(targetFrame);
 		alert.text(fastForwardText).addClass('is-visible');
 		position_viewport_alert();
 		return;
 	}
-	if (typeof Module !== "undefined" && typeof Module.get_acknowledgement_sound_play_count === "function") {
-		var nuclearLaunchSoundCount =
-			Module.get_acknowledgement_sound_play_count(127) +
-			Module.get_acknowledgement_sound_play_count(128) +
-			Module.get_acknowledgement_sound_play_count(129);
-		if (nuclearLaunchSoundCount > viewportAlertState.lastNuclearLaunchSoundCount) {
-			show_viewport_alert('Nuclear launch detected', 4500);
-		}
-		viewportAlertState.lastNuclearLaunchSoundCount = nuclearLaunchSoundCount;
+	if (viewportAlertState.pendingNuclearLaunch) {
+		viewportAlertState.pendingNuclearLaunch = false;
+		show_viewport_alert('Nuclear launch detected', 4500);
 	}
 	if (viewportAlertState.hideAt && Date.now() >= viewportAlertState.hideAt) {
 		viewportAlertState.hideAt = 0;

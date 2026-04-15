@@ -52,8 +52,7 @@ let zoomLevel = parseInt(localStorage.zoomLevel || '0');
 const defaultViewerToggleSettings = {
 	observerEnabled: true,
 	fowEnabled: true,
-	forceRedBlueEnabled: false,
-	musicEnabled: false
+	forceRedBlueEnabled: false
 };
 let viewerToggleSettings = (() => {
 	try {
@@ -622,9 +621,6 @@ jQuery(document).ready( function($) {
 		
 		toggle_sound();
 	});
-	$('#rv-rc-music').on('click', function() {
-		toggle_music();
-	});
 
 	$('#rv-rc-observer').on('click', function() {
 		toggle_observer();
@@ -1074,7 +1070,6 @@ function apply_persisted_viewer_toggle_settings() {
 	update_observer_button();
 	update_fow_button();
 	update_force_red_blue_button();
-	update_music_button();
 	if (typeof sync_music_playback_state === "function") {
 		sync_music_playback_state();
 	}
@@ -1109,10 +1104,6 @@ function update_force_red_blue_button() {
 	$('#rv-rc-force-colors').toggleClass('is-enabled', _force_red_blue_colors_get_value() !== 0);
 }
 
-function update_music_button() {
-	$('#rv-rc-music').toggleClass('is-enabled', !!viewerToggleSettings.musicEnabled);
-}
-
 function toggle_observer() {
 	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function" || typeof Module._observer_set_value !== "function") return;
 	_observer_set_value(_observer_get_value() === 0 ? 1 : 0);
@@ -1139,15 +1130,6 @@ function toggle_force_red_blue_colors() {
 	if (typeof update_info_bar === "function") {
 		first_frame_played = false;
 		update_info_bar(_replay_get_value(2));
-	}
-}
-
-function toggle_music() {
-	viewerToggleSettings.musicEnabled = !viewerToggleSettings.musicEnabled;
-	persist_viewer_toggle_settings();
-	update_music_button();
-	if (typeof sync_music_playback_state === "function") {
-		sync_music_playback_state();
 	}
 }
 
@@ -1629,6 +1611,7 @@ function update_timer(frame) {
     }
 	var timerElement = document.getElementById("rv-rc-timer");
 	timerElement.innerHTML = "time: " + time;
+	timerElement.title = "Frame " + displayFrame;
 	timerElement.classList.toggle("scrub-preview", scrubPreviewFrame !== null);
 	
 	$("#goto-frame-value").val(displayFrame);

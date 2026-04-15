@@ -7111,6 +7111,9 @@ body#tinymce {
   color: #181b22;
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   min-width: 212px; }
   .replay-control .row {
     max-width: none;
@@ -7119,7 +7122,9 @@ body#tinymce {
   .replay-control .rv-rc-progress-bar {
     padding: 0px 0px 0px 10px;
     background-color: #181b22;
-    height: 40px; }
+    height: 40px;
+    position: relative;
+    top: 2px; }
     .replay-control .rv-rc-progress-bar div #game-slider {
       padding: 0px;
       margin: 15px 0px 0px 0px; }
@@ -7573,7 +7578,7 @@ body.pregame-active #info-dock .info-dock-header {
   .bottom-info-dock #info_tab .tabs-content .tabs-panel {
     display: block !important;
     min-width: 0;
-    min-height: 84px;
+    min-height: 80px;
     padding: 0;
     border-left: 1px solid #181b22;
     position: relative; }
@@ -7760,13 +7765,12 @@ body.pregame-active #info-dock .info-dock-header {
 
 #zoom-buttons {
   grid-template-columns: repeat(2, 40px);
-  grid-template-rows: repeat(4, 40px);
+  grid-template-rows: repeat(3, 40px);
   gap: 8px;
   align-items: start; }
   #zoom-buttons button {
     margin: 0; }
   #zoom-buttons .button.secondary.small,
-  #zoom-buttons .rv-rc-music,
   #zoom-buttons .rv-rc-force-colors,
   #zoom-buttons .rv-rc-observer,
   #zoom-buttons .rv-rc-fow {
@@ -7780,50 +7784,43 @@ body.pregame-active #info-dock .info-dock-header {
     justify-content: center;
     font-size: 24px;
     line-height: 1;
-    background-color: rgba(32, 48, 76, 0.9);
+    background-color: rgba(35, 40, 49, 0.92);
     border-color: #5078b8;
     color: #cfe3ff; }
   #zoom-buttons #zoom-in.zoom-active,
   #zoom-buttons #zoom-out.zoom-active {
-    background-color: rgba(38, 92, 52, 0.95);
-    border-color: #7fda95;
+    background-color: #3c8d50;
+    border-color: #3c8d50;
     color: #f2fff4; }
-  #zoom-buttons .rv-rc-music,
   #zoom-buttons .rv-rc-observer,
   #zoom-buttons .rv-rc-fow,
   #zoom-buttons .rv-rc-force-colors {
     position: relative;
     background-image: none;
-    color: #d0d4de;
-    border: 1px solid #4d5564;
+    color: #ffd36c;
+    border: 1px solid #d7aa4d;
     background-color: rgba(35, 40, 49, 0.92); }
   #zoom-buttons #zoom-in {
     grid-column: 1;
     grid-row: 2; }
   #zoom-buttons #zoom-out {
     grid-column: 1;
-    grid-row: 4; }
-  #zoom-buttons #rv-rc-music {
-    grid-column: 2;
-    grid-row: 1; }
+    grid-row: 3; }
   #zoom-buttons #rv-rc-force-colors {
     grid-column: 2;
-    grid-row: 2; }
+    grid-row: 1; }
   #zoom-buttons #rv-rc-observer {
     grid-column: 2;
-    grid-row: 3; }
+    grid-row: 2; }
   #zoom-buttons #rv-rc-fow {
     grid-column: 2;
-    grid-row: 4; }
-  #zoom-buttons .rv-rc-music::before,
+    grid-row: 3; }
   #zoom-buttons .rv-rc-force-colors::before,
   #zoom-buttons .rv-rc-observer::before,
   #zoom-buttons .rv-rc-fow::before {
     font-family: 'FontAwesome';
     font-size: 18px;
     line-height: 38px; }
-  #zoom-buttons .rv-rc-music::before {
-    content: "\f001"; }
   #zoom-buttons .rv-rc-force-colors::before {
     content: "";
     position: absolute;
@@ -7842,17 +7839,17 @@ body.pregame-active #info-dock .info-dock-header {
     border-right: 1px solid rgba(226, 232, 242, 0.8);
     border-bottom: 1px solid rgba(226, 232, 242, 0.8); }
   #zoom-buttons .rv-rc-observer::before {
-    content: "\f030"; }
+    content: "\f03d"; }
   #zoom-buttons .rv-rc-fow::before {
     content: "\f0c2"; }
-  #zoom-buttons .rv-rc-music.is-enabled,
   #zoom-buttons .rv-rc-force-colors.is-enabled,
   #zoom-buttons .rv-rc-observer.is-enabled,
   #zoom-buttons .rv-rc-fow.is-enabled {
-    color: #ffd36c;
-    border-color: #ffd36c; }
+    color: #181b22;
+    border-color: #d7aa4d;
+    background-color: #ffd36c; }
   #zoom-buttons .rv-rc-force-colors.is-enabled {
-    box-shadow: inset 0 0 0 1px rgba(255, 211, 108, 0.35); }
+    box-shadow: none; }
 
 #playlist-controls {
   align-items: center;
