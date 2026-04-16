@@ -617,7 +617,12 @@ jQuery(document).ready( function($) {
 	
 	$('#game-slider').on('moved.zf.slider', function() {
 		if (isDown || isClicked) {
-			var new_val = document.getElementById("sliderOutput").value / 200;
+			var sliderValue = parseFloat(document.getElementById("sliderOutput").value);
+			if (!Number.isFinite(sliderValue)) {
+				isClicked = false;
+				return;
+			}
+			var new_val = Math.max(0, Math.min(1, sliderValue / 200));
 			scrubPreviewFrame = Math.round(_replay_get_value(4) * new_val);
 			update_timer(_replay_get_value(2));
 			_replay_set_value(6, new_val);
@@ -1133,7 +1138,7 @@ function update_permalink_button(state) {
 		state = get_viewer_runtime_state();
 	}
 	var enabled = !!(state && state.hasReplay && state.canCopyReplayLink);
-	$('#rv-rc-copy-link').prop('disabled', !enabled);
+	$('#rv-rc-copy-link').toggle(enabled);
 }
 
 function toggle_observer() {
@@ -1658,6 +1663,7 @@ function update_production_tab(incomplete_units, upgrades, researches) {
 
 function update_timer(frame) {
 	var displayFrame = scrubPreviewFrame !== null ? scrubPreviewFrame : frame;
+	if (!Number.isFinite(displayFrame)) displayFrame = 0;
 	var sec_num = displayFrame  * 42 / 1000;
 	var hours   = Math.floor(sec_num / 3600);
     var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
