@@ -66,6 +66,7 @@ let settingsModalTab = localStorage.settingsModalTab === 'audio' ? 'audio' : 'vi
 let exportState = null;
 let scrubPreviewFrame = null;
 let isDraggingVolumeSlider = false;
+let isSyncingOverallVolumeSlider = false;
 let exportSettings = load_export_settings();
 const UNITTYPES_DISPLAY_NAMES = ["Terran Marine", "Terran Ghost", "Terran Vulture", "Terran Goliath", "Terran Goliath Turret", "Terran Siege Tank Tank Mode", "Terran Siege Tank Tank Mode Turret", "Terran SCV", "Terran Wraith", "Terran Science Vessel", "Hero Gui Montag", "Terran Dropship", "Terran Battlecruiser", "Terran Vulture Spider Mine", "Terran Nuclear Missile", "Terran Civilian", "Hero Sarah Kerrigan", "Hero Alan Schezar", "Hero Alan Schezar Turret", "Hero Jim Raynor Vulture", "Hero Jim Raynor Marine", "Hero Tom Kazansky", "Hero Magellan", "Hero Edmund Duke Tank Mode", "Hero Edmund Duke Tank Mode Turret", "Hero Edmund Duke Siege Mode", "Hero Edmund Duke Siege Mode Turret", "Hero Arcturus Mengsk", "Hero Hyperion", "Hero Norad II", "Terran Siege Tank Siege Mode", "Terran Siege Tank Siege Mode Turret", "Terran Firebat", "Spell Scanner Sweep", "Terran Medic", "Zerg Larva", "Zerg Egg", "Zerg Zergling", "Zerg Hydralisk", "Zerg Ultralisk", "Zerg Broodling", "Zerg Drone", "Zerg Overlord", "Zerg Mutalisk", "Zerg Guardian", "Zerg Queen", "Zerg Defiler", "Zerg Scourge", "Hero Torrasque", "Hero Matriarch", "Zerg Infested Terran", "Hero Infested Kerrigan", "Hero Unclean One", "Hero Hunter Killer", "Hero Devouring One", "Hero Kukulza Mutalisk", "Hero Kukulza Guardian", "Hero Yggdrasill", "Terran Valkyrie", "Zerg Cocoon", "Protoss Corsair", "Protoss Dark Templar", "Zerg Devourer", "Protoss Dark Archon", "Protoss Probe", "Protoss Zealot", "Protoss Dragoon", "Protoss High Templar", "Protoss Archon", "Protoss Shuttle", "Protoss Scout", "Protoss Arbiter", "Protoss Carrier", "Protoss Interceptor", "Hero Dark Templar", "Hero Zeratul", "Hero Tassadar Zeratul Archon", "Hero Fenix Zealot", "Hero Fenix Dragoon", "Hero Tassadar", "Hero Mojo", "Hero Warbringer", "Hero Gantrithor", "Protoss Reaver", "Protoss Observer", "Protoss Scarab", "Hero Danimoth", "Hero Aldaris", "Hero Artanis", "Critter Rhynadon", "Critter Bengalaas", "Special Cargo Ship", "Special Mercenary Gunship", "Critter Scantid", "Critter Kakaru", "Critter Ragnasaur", "Critter Ursadon", "Zerg Lurker Egg", "Hero Raszagal", "Hero Samir Duran", "Hero Alexei Stukov", "Special Map Revealer", "Hero Gerard DuGalle", "Zerg Lurker", "Hero Infested Duran", "Spell Disruption Web", "Terran Command Center", "Terran Comsat Station", "Terran Nuclear Silo", "Terran Supply Depot", "Terran Refinery", "Terran Barracks", "Terran Academy", "Terran Factory", "Terran Starport", "Terran Control Tower", "Terran Science Facility", "Terran Covert Ops", "Terran Physics Lab", "Unused Terran1", "Terran Machine Shop", "Unused Terran2", "Terran Engineering Bay", "Terran Armory", "Terran Missile Turret", "Terran Bunker", "Special Crashed Norad II", "Special Ion Cannon", "Powerup Uraj Crystal", "Powerup Khalis Crystal", "Zerg Infested Command Center", "Zerg Hatchery", "Zerg Lair", "Zerg Hive", "Zerg Nydus Canal", "Zerg Hydralisk Den", "Zerg Defiler Mound", "Zerg Greater Spire", "Zerg Queens Nest", "Zerg Evolution Chamber", "Zerg Ultralisk Cavern", "Zerg Spire", "Zerg Spawning Pool", "Zerg Creep Colony", "Zerg Spore Colony", "Unused Zerg1", "Zerg Sunken Colony", "Special Overmind With Shell", "Special Overmind", "Zerg Extractor", "Special Mature Chrysalis", "Special Cerebrate", "Special Cerebrate Daggoth", "Unused Zerg2", "Protoss Nexus", "Protoss Robotics Facility", "Protoss Pylon", "Protoss Assimilator", "Unused Protoss1", "Protoss Observatory", "Protoss Gateway", "Unused Protoss2", "Protoss Photon Cannon", "Protoss Citadel of Adun", "Protoss Cybernetics Core", "Protoss Templar Archives", "Protoss Forge", "Protoss Stargate", "Special Stasis Cell Prison", "Protoss Fleet Beacon", "Protoss Arbiter Tribunal", "Protoss Robotics Support Bay", "Protoss Shield Battery", "Special Khaydarin Crystal Form", "Special Protoss Temple", "Special XelNaga Temple", "Resource Mineral Field", "Resource Mineral Field Type 2", "Resource Mineral Field Type 3", "Unused Cave", "Unused Cave In", "Unused Cantina", "Unused Mining Platform", "Unused Independant Command Center", "Special Independant Starport", "Unused Independant Jump Gate", "Unused Ruins", "Unused Khaydarin Crystal Formation", "Resource Vespene Geyser", "Special Warp Gate", "Special Psi Disrupter", "Unused Zerg Marker", "Unused Terran Marker", "Unused Protoss Marker", "Special Zerg Beacon", "Special Terran Beacon", "Special Protoss Beacon", "Special Zerg Flag Beacon", "Special Terran Flag Beacon", "Special Protoss Flag Beacon", "Special Power Generator", "Special Overmind Cocoon", "Spell Dark Swarm", "Special Floor Missile Trap", "Special Floor Hatch", "Special Upper Level Door", "Special Right Upper Level Door", "Special Pit Door", "Special Right Pit Door", "Special Floor Gun Trap", "Special Wall Missile Trap", "Special Wall Flame Trap", "Special Right Wall Missile Trap", "Special Right Wall Flame Trap", "Special Start Location", "Powerup Flag", "Powerup Young Chrysalis", "Powerup Psi Emitter", "Powerup Data Disk", "Powerup Khaydarin Crystal", "Powerup Mineral Cluster Type 1", "Powerup Mineral Cluster Type 2", "Powerup Protoss Gas Orb Type 1", "Powerup Protoss Gas Orb Type 2", "Powerup Zerg Gas Sac Type 1", "Powerup Zerg Gas Sac Type 2", "Powerup Terran Gas Tank Type 1", "Powerup Terran Gas Tank Type 2", "None"];
 const UPGRADETYPES_DISPLAY_NAMES = ["Terran Infantry Armor", "Terran Vehicle Plating", "Terran Ship Plating", "Zerg Carapace", "Zerg Flyer Carapace", "Protoss Ground Armor", "Protoss Air Armor", "Terran Infantry Weapons", "Terran Vehicle Weapons", "Terran Ship Weapons", "Zerg Melee Attacks", "Zerg Missile Attacks", "Zerg Flyer Attacks", "Protoss Ground Weapons", "Protoss Air Weapons", "Protoss Plasma Shields", "U 238 Shells", "Ion Thrusters", "Unknown 18", "Titan Reactor", "Ocular Implants", "Moebius Reactor", "Apollo Reactor", "Colossus Reactor", "Ventral Sacs", "Antennae", "Pneumatized Carapace", "Metabolic Boost", "Adrenal Glands", "Muscular Augments", "Grooved Spines", "Gamete Meiosis", "Metasynaptic Node", "Singularity Charge", "Leg Enhancements", "Scarab Damage", "Reaver Capacity", "Gravitic Drive", "Sensor Array", "Gravitic Boosters", "Khaydarin Amulet", "Apial Sensors", "Gravitic Thrusters", "Carrier Capacity", "Khaydarin Core", "Unknown 45", "Unknown 46", "Argus Jewel", "Unknown 48", "Argus Talisman", "Unknown 50", "Caduceus Reactor", "Chitinous Plating", "Anabolic Synthesis", "Charon Boosters"];
@@ -200,13 +201,21 @@ function update_sound_button_state() {
 
 function update_overall_volume_slider_ui() {
 	var percent = Math.round(sanitize_unit_interval(volumeSettings.level, 0.5) * 100);
-	$('#volumeOutput').val(percent).trigger('change');
-	var sliderPlugin = $('#volume-slider').data('zfPlugin');
-	if (sliderPlugin && sliderPlugin.$handle) {
-		sliderPlugin._setHandlePos(sliderPlugin.$handle, percent, true);
-	} else {
-		$('#volume-slider-handle').css('top', '' + (88.8 * sanitize_unit_interval(volumeSettings.level, 0.5)) + '%');
-		$('#volume-slider-handle').attr('aria-valuenow', percent);
+	var volumeOutput = $('#volumeOutput');
+	if (String(volumeOutput.val()) !== String(percent)) {
+		volumeOutput.val(percent);
+	}
+	isSyncingOverallVolumeSlider = true;
+	try {
+		var sliderPlugin = $('#volume-slider').data('zfPlugin');
+		if (sliderPlugin && sliderPlugin.$handle) {
+			sliderPlugin._setHandlePos(sliderPlugin.$handle, percent, true);
+		} else {
+			$('#volume-slider-handle').css('top', '' + (88.8 * sanitize_unit_interval(volumeSettings.level, 0.5)) + '%');
+			$('#volume-slider-handle').attr('aria-valuenow', percent);
+		}
+	} finally {
+		isSyncingOverallVolumeSlider = false;
 	}
 	update_sound_button_state();
 }
@@ -711,7 +720,7 @@ jQuery(document).ready( function($) {
 
 	let volumeInitialized = false;
 	$('#volume-slider').on('moved.zf.slider', function() {
-		if (!volumeInitialized) return;
+		if (!volumeInitialized || isSyncingOverallVolumeSlider) return;
 
 		var previousMuted = volumeSettings.muted;
 		var nextLevel = document.getElementById("volumeOutput").value / 100;
@@ -721,13 +730,16 @@ jQuery(document).ready( function($) {
 		} else if (isDraggingVolumeSlider) {
 			nextMuted = false;
 		}
+		if (Math.abs(nextLevel - volumeSettings.level) < 0.0001 && nextMuted === volumeSettings.muted) {
+			return;
+		}
 		apply_overall_volume_state(nextLevel, nextMuted);
 	});
 
   // Perform initial volume setup
   // We do this with a setTimeout because the Foundation slider seems to be borked - it doesn't correctly set the handle position and
   // resets it if we do this too early
-  $('#volumeOutput').val(volumeSettings.level * 100).trigger('change');
+  $('#volumeOutput').val(Math.round(volumeSettings.level * 100));
   update_sound_button_state();
   populate_audio_settings_form();
   populate_export_settings_form();
