@@ -7114,6 +7114,7 @@ body#tinymce {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  height: var(--footer-block-height);
   min-width: 212px; }
   .replay-control .row {
     max-width: none;
@@ -7122,27 +7123,37 @@ body#tinymce {
   .replay-control .rv-rc-progress-bar {
     padding: 0px 0px 0px 10px;
     background-color: #181b22;
-    height: 40px;
-    position: relative;
-    top: 2px; }
+    height: var(--footer-row-height);
+    display: flex;
+    align-items: center; }
+    .replay-control .rv-rc-progress-bar > div {
+      display: flex;
+      align-items: center;
+      height: 100%; }
     .replay-control .rv-rc-progress-bar div #game-slider {
       padding: 0px;
-      margin: 15px 0px 0px 0px; }
+      margin: 0px; }
   .replay-control .rv-rc-timer {
     padding: 0px 0px 0px 0px;
     background-color: #181b22;
     font-weight: bold;
     font-size: 0.8rem;
     text-align: left;
-    color: white; }
+    color: white;
+    height: var(--footer-label-height);
+    display: flex;
+    align-items: center; }
     .replay-control .rv-rc-timer > div {
-      white-space: nowrap; }
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      height: 100%; }
     .replay-control .rv-rc-timer.scrub-preview {
       color: #ffd36c; }
 .replay-control .rv-rc-controls {
     padding: 0;
     background-color: #181b22;
-    height: 40px;
+    height: var(--footer-row-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7398,6 +7409,9 @@ body.pregame-active #info-dock .info-dock-header {
       float: right; }
 
 .infobar-container {
+  --footer-row-height: 40px;
+  --footer-label-height: 21px;
+  --footer-block-height: 101px;
   display: flex;
   flex-wrap: nowrap !important;
   align-items: stretch;
@@ -7532,6 +7546,7 @@ body.pregame-active #info-dock .info-dock-header {
 .bottom-info-dock {
   flex: 0 0 820px;
   min-width: 820px;
+  height: var(--footer-block-height);
   border-left: 0;
   border-right: 0;
   padding-left: 0;
@@ -7543,13 +7558,13 @@ body.pregame-active #info-dock .info-dock-header {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
     align-items: center;
-    min-height: 21px;
+    min-height: var(--footer-label-height);
     background-color: #181b22;
     border-bottom: 1px solid #181b22;
     position: absolute;
     left: 0;
     right: 0;
-    top: 40px;
+    top: var(--footer-row-height);
     z-index: 1; }
   .infobar-container.multiplayer-labels-top .bottom-info-dock .info-dock-header {
     top: 0; }
@@ -7578,7 +7593,8 @@ body.pregame-active #info-dock .info-dock-header {
   .bottom-info-dock #info_tab .tabs-content .tabs-panel {
     display: block !important;
     min-width: 0;
-    min-height: 80px;
+    min-height: var(--footer-block-height);
+    height: var(--footer-block-height);
     padding: 0;
     border-left: 1px solid #181b22;
     position: relative; }
@@ -7587,12 +7603,12 @@ body.pregame-active #info-dock .info-dock-header {
     align-items: flex-start;
     gap: 0;
     overflow: hidden;
-    min-height: 40px;
-    height: 40px; }
+    min-height: var(--footer-row-height);
+    height: var(--footer-row-height); }
   .infobar-container.multiplayer-labels-top .bottom-info-dock #info_tab .tabs-content .tabs-panel .per-player-info1 {
-    margin-top: 21px; }
+    margin-top: var(--footer-label-height); }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel .per-player-info2 {
-    margin-top: 21px; }
+    margin-top: var(--footer-label-height); }
   .infobar-container.multiplayer-labels-top .bottom-info-dock #info_tab .tabs-content .tabs-panel .per-player-info2 {
     margin-top: 0; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel:first-child {
@@ -7607,9 +7623,9 @@ body.pregame-active #info-dock .info-dock-header {
     margin-right: 0; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content {
     --tile-width: 36px;
-    --tile-height: 35px;
-    --tile-image-height: 30px;
-    --tile-bar-height: 4px;
+    --tile-height: 38px;
+    --tile-image-height: 33px;
+    --tile-bar-height: 5px;
     --tile-badge-font: 0.65rem;
     --tile-badge-width: 0.9rem;
     --tile-bar-max: 36px;
@@ -7617,10 +7633,13 @@ body.pregame-active #info-dock .info-dock-header {
     min-width: 0;
     display: flex;
     flex-wrap: nowrap;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 1px;
     overflow: hidden;
-    padding: 1px; }
+    align-content: flex-end;
+    box-sizing: border-box;
+    height: 100%;
+    padding: 0; }
   .bottom-info-dock #info_tab #info_tab_panel2 .info_tab_content,
   .bottom-info-dock #info_tab #info_tab_panel3 .info_tab_content {
     --tile-width: 38px;
@@ -7648,8 +7667,8 @@ body.pregame-active #info-dock .info-dock-header {
     --tile-bar-height: 0px; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="2"] {
     --tile-width: 17px;
-    --tile-height: 18px;
-    --tile-image-height: 14px;
+    --tile-height: 19px;
+    --tile-image-height: 16px;
     --tile-bar-height: 3px;
     --tile-badge-font: 0.5rem;
     --tile-badge-width: 0.65rem;
@@ -7657,7 +7676,7 @@ body.pregame-active #info-dock .info-dock-header {
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="3"] {
     --tile-width: 12px;
     --tile-height: 12px;
-    --tile-image-height: 8px;
+    --tile-image-height: 10px;
     --tile-bar-height: 2px;
     --tile-badge-font: 0.42rem;
     --tile-badge-width: 0.55rem;
@@ -7665,7 +7684,7 @@ body.pregame-active #info-dock .info-dock-header {
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="4"] {
     --tile-width: 9px;
     --tile-height: 9px;
-    --tile-image-height: 6px;
+    --tile-image-height: 8px;
     --tile-bar-height: 1px;
     --tile-badge-font: 0.34rem;
     --tile-badge-width: 0.45rem;
@@ -7675,11 +7694,11 @@ body.pregame-active #info-dock .info-dock-header {
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="4"] {
     display: flex;
     flex-wrap: wrap;
-    align-content: start; }
+    align-content: flex-end; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content[data-scale="dynamic"] {
     display: flex;
     flex-wrap: nowrap;
-    align-content: start; }
+    align-content: flex-end; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel > div .info_tab_content > div:not([style*="display: none"]) {
     flex: 0 0 auto;
     display: inline-block !important;
@@ -7690,7 +7709,8 @@ body.pregame-active #info-dock .info-dock-header {
     display: none !important; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel div .info_tab_content img {
     width: var(--tile-width);
-    height: var(--tile-image-height, var(--tile-height)); }
+    height: var(--tile-image-height, var(--tile-height));
+    display: block; }
   .bottom-info-dock #info_tab .tabs-content .tabs-panel div .info_tab_content span {
     display: block;
     position: absolute;
@@ -7721,9 +7741,10 @@ body.pregame-active #info-dock .info-dock-header {
     display: none !important; }
 #viewport-export {
   display: grid;
-  grid-template-columns: repeat(2, 40px);
+  grid-template-columns: repeat(3, 40px);
   gap: 8px; }
 
+#viewport-export .rv-rc-copy-link,
 #viewport-export .rv-rc-export,
 #viewport-export .rv-rc-export-settings {
   padding: 0;
@@ -7738,13 +7759,18 @@ body.pregame-active #info-dock .info-dock-header {
   background-color: rgba(35, 40, 49, 0.92);
   border: 1px solid #4d5564;
   color: #d0d4de; }
+  #viewport-export .rv-rc-copy-link::before {
+    content: "\23F1";
+    font-family: inherit;
+    font-size: 18px;
+    line-height: 1; }
   #viewport-export .rv-rc-export-settings::before {
     content: "\f013";
     font-family: 'FontAwesome';
     font-size: 18px;
     line-height: 1; }
   #viewport-export .rv-rc-export::before {
-    content: "\f03d";
+    content: "\f0c4";
     font-family: 'FontAwesome';
     font-size: 18px;
     line-height: 1; }
@@ -7762,6 +7788,8 @@ body.pregame-active #info-dock .info-dock-header {
     font-family: inherit;
     font-size: 16px;
     line-height: 38px; }
+  #viewport-export .rv-rc-copy-link:disabled {
+    opacity: 0.45; }
 
 #zoom-buttons {
   grid-template-columns: repeat(2, 40px);

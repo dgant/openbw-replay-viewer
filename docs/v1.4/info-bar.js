@@ -126,6 +126,19 @@ function persist_audio_category_settings() {
 	localStorage.audioCategorySettings = JSON.stringify(audioCategorySettings);
 }
 
+function sync_audio_controls_ui() {
+	update_overall_volume_slider_ui();
+	populate_audio_settings_form();
+}
+
+function apply_overall_volume_state(level, muted) {
+	volumeSettings.level = sanitize_unit_interval(level, 0.5);
+	volumeSettings.muted = !!muted;
+	persist_volume_settings();
+	sync_audio_controls_ui();
+	apply_audio_settings_to_runtime();
+}
+
 function effective_overall_volume() {
 	return volumeSettings.muted ? 0 : sanitize_unit_interval(volumeSettings.level, 0.5);
 }
@@ -173,7 +186,9 @@ function apply_audio_settings_to_runtime() {
 		}
 	}
 	apply_music_volume();
-	if (typeof sync_music_playback_state === "function") {
+	if (typeof sync_viewer_runtime_state === "function") {
+		sync_viewer_runtime_state();
+	} else if (typeof sync_music_playback_state === "function") {
 		sync_music_playback_state();
 	}
 }
@@ -290,16 +305,11 @@ function reset_export_settings_to_defaults() {
 
 function reset_audio_settings_to_defaults() {
 	volumeSettings = load_volume_settings();
-	volumeSettings.level = 0.5;
-	volumeSettings.muted = false;
 	audioCategorySettings = JSON.parse(JSON.stringify(defaultAudioCategorySettings));
 	delete localStorage.volumeSettings;
 	delete localStorage.audioCategorySettings;
-	persist_volume_settings();
 	persist_audio_category_settings();
-	update_overall_volume_slider_ui();
-	populate_audio_settings_form();
-	apply_audio_settings_to_runtime();
+	apply_overall_volume_state(0.5, false);
 }
 
 function populate_audio_settings_form() {
@@ -324,11 +334,7 @@ function set_settings_modal_tab(tab) {
 
 function set_audio_setting_enabled(key, enabled) {
 	if (key === 'overall') {
-		volumeSettings.muted = !enabled;
-		persist_volume_settings();
-		update_overall_volume_slider_ui();
-		populate_audio_settings_form();
-		apply_audio_settings_to_runtime();
+		apply_overall_volume_state(volumeSettings.level, !enabled);
 		return;
 	}
 	audioCategorySettings[key].enabled = !!enabled;
@@ -340,12 +346,7 @@ function set_audio_setting_enabled(key, enabled) {
 function set_audio_setting_level(key, value) {
 	var normalized = sanitize_unit_interval(value / 100, 1);
 	if (key === 'overall') {
-		volumeSettings.level = normalized;
-		volumeSettings.muted = normalized === 0;
-		persist_volume_settings();
-		update_overall_volume_slider_ui();
-		populate_audio_settings_form();
-		apply_audio_settings_to_runtime();
+		apply_overall_volume_state(normalized, normalized === 0);
 		return;
 	}
 	audioCategorySettings[key].level = normalized;
@@ -649,6 +650,9 @@ jQuery(document).ready( function($) {
 			start_video_export();
 		}
 	});
+	$('#rv-rc-copy-link').on('click', function() {
+		copy_replay_link_for_current_frame();
+	});
 	$('#rv-rc-export-settings').on('click', function() {
 		open_export_settings_modal();
 	});
@@ -710,30 +714,28 @@ jQuery(document).ready( function($) {
 		if (!volumeInitialized) return;
 
 		var previousMuted = volumeSettings.muted;
-		volumeSettings.level = document.getElementById("volumeOutput").value / 100;
-		if (volumeSettings.level === 0) {
-			volumeSettings.muted = true;
+		var nextLevel = document.getElementById("volumeOutput").value / 100;
+		var nextMuted = previousMuted;
+		if (nextLevel === 0) {
+			nextMuted = true;
 		} else if (isDraggingVolumeSlider) {
-			volumeSettings.muted = false;
-		} else {
-			volumeSettings.muted = previousMuted;
+			nextMuted = false;
 		}
-		persist_volume_settings();
-		update_sound_button_state();
-		populate_audio_settings_form();
-		apply_audio_settings_to_runtime();
+		apply_overall_volume_state(nextLevel, nextMuted);
 	});
 
-	// Perform initial volume setup
-	// We do this with a setTimeout because the Foundation slider seems to be borked - it doesn't correctly set the handle position and
-	// resets it if we do this too early
-	$('#volumeOutput').val(volumeSettings.level * 100).trigger('change');
-	setTimeout(() => {
-		update_overall_volume_slider_ui();
-		populate_audio_settings_form();
-		apply_audio_settings_to_runtime();
-		volumeInitialized = true;
-	}, 1000);
+  // Perform initial volume setup
+  // We do this with a setTimeout because the Foundation slider seems to be borked - it doesn't correctly set the handle position and
+  // resets it if we do this too early
+  $('#volumeOutput').val(volumeSettings.level * 100).trigger('change');
+  update_sound_button_state();
+  populate_audio_settings_form();
+  populate_export_settings_form();
+  setTimeout(() => {
+  	sync_audio_controls_ui();
+  	apply_audio_settings_to_runtime();
+  	volumeInitialized = true;
+  }, 1000);
 	
 	function drag_start(event) {
 	    var style = window.getComputedStyle(event.target, null);
@@ -757,12 +759,10 @@ hide_volume_slider();
 update_observer_button();
 update_fow_button();
 update_force_red_blue_button();
-update_player_vision_buttons();
-update_zoom_buttons();
-apply_infobar_layout();
-populate_audio_settings_form();
-populate_export_settings_form();
-})	
+  update_player_vision_buttons();
+  update_zoom_buttons();
+  apply_infobar_layout();
+  })	
 
 function zoomOut() {
 	if (zoomLevel <= -4) return;
@@ -924,7 +924,7 @@ function apply_info_strip_scale(parent_element) {
 		element.style.removeProperty('--tile-bar-max');
 		return;
 	}
-	var availableWidth = Math.max(0, (element.clientWidth || 0) - 2);
+	var availableWidth = Math.max(0, element.clientWidth || 0);
 	var isArmyOrTech = /^(army|tech|upgrade)_tab_content/.test(element.id);
 	var fullColumns = isArmyOrTech ? 5 : 10;
 	var base = isArmyOrTech ? {
@@ -937,9 +937,9 @@ function apply_info_strip_scale(parent_element) {
 		barMax: 0
 	} : {
 		width: 36,
-		height: 35,
-		imageHeight: 30,
-		barHeight: 4,
+		height: 38,
+		imageHeight: 33,
+		barHeight: 5,
 		badgeFont: 0.65,
 		badgeWidth: 0.9,
 		barMax: 36
@@ -1104,6 +1104,14 @@ function update_force_red_blue_button() {
 	$('#rv-rc-force-colors').toggleClass('is-enabled', _force_red_blue_colors_get_value() !== 0);
 }
 
+function update_permalink_button(state) {
+	if (!state && typeof get_viewer_runtime_state === "function") {
+		state = get_viewer_runtime_state();
+	}
+	var enabled = !!(state && state.hasReplay && state.canCopyReplayLink);
+	$('#rv-rc-copy-link').prop('disabled', !enabled);
+}
+
 function toggle_observer() {
 	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function" || typeof Module._observer_set_value !== "function") return;
 	_observer_set_value(_observer_get_value() === 0 ? 1 : 0);
@@ -1155,12 +1163,37 @@ function toggle_player_vision(playerIndex) {
 	update_player_vision_buttons();
 }
 
+async function copy_replay_link_for_current_frame() {
+	if (!main_has_been_called || typeof _replay_get_value !== "function" || !currentReplaySourceUrl) return;
+	var url = new URL(window.location.href);
+	url.searchParams.set('rep', currentReplaySourceUrl);
+	url.searchParams.set('frame', String(Math.max(0, Math.round(_replay_get_value(2)))));
+	var text = url.toString();
+	var copied = false;
+	try {
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			await navigator.clipboard.writeText(text);
+			copied = true;
+		}
+	} catch (error) {}
+	if (!copied) {
+		var textarea = document.createElement('textarea');
+		textarea.value = text;
+		textarea.setAttribute('readonly', '');
+		textarea.style.position = 'absolute';
+		textarea.style.left = '-9999px';
+		document.body.appendChild(textarea);
+		textarea.select();
+		copied = document.execCommand('copy');
+		document.body.removeChild(textarea);
+	}
+	if (copied && typeof show_viewport_alert === "function") {
+		show_viewport_alert('Link copied to clipboard', 5000);
+	}
+}
+
 function toggle_sound() {
-	volumeSettings.muted = !volumeSettings.muted;
-	persist_volume_settings();
-	update_sound_button_state();
-	populate_audio_settings_form();
-	apply_audio_settings_to_runtime();
+	apply_overall_volume_state(volumeSettings.level, !volumeSettings.muted);
 }
 
 function best_export_mime_type() {
@@ -1323,17 +1356,19 @@ function start_video_export() {
 function toggle_pause() {
 	update_info_tab();
 	_replay_set_value(1, (_replay_get_value(1) + 1)%2);
-	update_play_pause_button();
-	if (typeof sync_music_playback_state === "function") {
-		sync_music_playback_state();
+	if (typeof sync_viewer_runtime_state === "function") {
+		sync_viewer_runtime_state();
+	} else {
+		update_play_pause_button();
 	}
 }
 
 function ensure_paused() {
 	_replay_set_value(1, 1);
-	update_play_pause_button();
-	if (typeof sync_music_playback_state === "function") {
-		sync_music_playback_state();
+	if (typeof sync_viewer_runtime_state === "function") {
+		sync_viewer_runtime_state();
+	} else {
+		update_play_pause_button();
 	}
 }
 
@@ -1341,8 +1376,11 @@ function update_speed(speed) {
 	document.getElementById("rv-rc-speed").innerHTML = "speed: " + Number(speed).toFixed(2) + "x";
 }
 
-function update_play_pause_button() {
-	var paused = !main_has_been_called || _replay_get_value(1) !== 0;
+function update_play_pause_button(state) {
+	if (!state && typeof get_viewer_runtime_state === "function") {
+		state = get_viewer_runtime_state();
+	}
+	var paused = !state ? (!main_has_been_called || _replay_get_value(1) !== 0) : (!state.hasReplay || state.isPaused);
 	$('#rv-rc-play').toggleClass('rv-rc-play', paused);
 	$('#rv-rc-play').toggleClass('rv-rc-pause', !paused);
 }

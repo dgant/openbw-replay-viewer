@@ -62,6 +62,10 @@ var replayPlaylist = [];
 var replayPlaylistIndex = -1;
 var remoteReplayStatus = null;
 var query_params = new URLSearchParams(window.location.search);
+var requestedReplayFrame = (() => {
+	var value = parseInt(query_params.get('frame') || '', 10);
+	return Number.isFinite(value) && value >= 0 ? value : null;
+})();
 var embeddedReplayConfig = {
 	enabled: query_params.get('embedded') === '1',
 	playerFilter: (query_params.get('player') || '').trim().toLowerCase(),
@@ -90,9 +94,19 @@ var musicState = {
 	playlist: [],
 	index: 0,
 	unlocked: false,
-	activeReplayKey: null
+	activeReplayKey: null,
+	suppressPauseSync: false
 };
 var viewerWindowFocused = true;
+var currentReplaySourceUrl = query_params.get('rep') || null;
+var pendingRequestedReplayFrame = null;
+var playbackStateMonitor = {
+	lastFrame: null,
+	lastAdvanceAt: 0,
+	lastSeenAt: 0
+};
+var viewerRuntimeUiStateCache = null;
+var viewerRuntimeUiLastSyncAt = 0;
 var viewportAlertState = {
 	lastNuclearLaunchAlertCount: 0,
 	pendingNuclearLaunch: false,
@@ -274,7 +288,9 @@ function build_music_playlist_for_current_replay() {
 
 function stop_music_playback() {
 	if (!musicState.audio) return;
+	musicState.suppressPauseSync = true;
 	musicState.audio.pause();
+	musicState.suppressPauseSync = false;
 	musicState.audio.src = '';
 	musicState.audio = null;
 }
@@ -285,12 +301,92 @@ function is_music_enabled() {
 		audioCategorySettings.music.enabled);
 }
 
-function is_viewer_playback_active() {
-	if (document.hidden || !viewerWindowFocused) return false;
-	if (!main_has_been_called || typeof _replay_get_value !== "function") return false;
-	if (_replay_get_value(1) !== 0) return false;
-	if (_replay_get_value(4) > 0 && _replay_get_value(2) >= _replay_get_value(4)) return false;
-	return true;
+function reset_playback_state_monitor() {
+	playbackStateMonitor.lastFrame = main_has_been_called && typeof _replay_get_value === "function" ? _replay_get_value(2) : null;
+	playbackStateMonitor.lastAdvanceAt = 0;
+	playbackStateMonitor.lastSeenAt = Date.now();
+}
+
+function note_viewer_frame_progress(frame) {
+	var now = Date.now();
+	if (playbackStateMonitor.lastFrame === null || frame !== playbackStateMonitor.lastFrame) {
+		playbackStateMonitor.lastAdvanceAt = now;
+		playbackStateMonitor.lastFrame = frame;
+	}
+	playbackStateMonitor.lastSeenAt = now;
+}
+
+function playback_expected_frame_interval_ms(speed) {
+	var safeSpeed = Math.max(1 / 128, Number(speed) || 1);
+	return 42 / safeSpeed;
+}
+
+function get_viewer_runtime_state() {
+	var hasReplay = main_has_been_called && typeof _replay_get_value === "function" && _replay_get_value(4) > 0;
+	var state = {
+		hasReplay: hasReplay,
+		windowActive: !document.hidden && viewerWindowFocused,
+		currentFrame: 0,
+		targetFrame: 0,
+		endFrame: 0,
+		speed: 1,
+		isPaused: true,
+		isDone: false,
+		isCatchingUp: false,
+		playbackRequested: false,
+		advancingFrames: false,
+		canCopyReplayLink: !!currentReplaySourceUrl
+	};
+	if (!hasReplay) return state;
+	state.currentFrame = _replay_get_value(2);
+	state.targetFrame = _replay_get_value(3);
+	state.endFrame = _replay_get_value(4);
+	state.speed = _replay_get_value(0);
+	state.isPaused = _replay_get_value(1) !== 0;
+	state.isDone = state.endFrame > 0 && state.currentFrame >= state.endFrame;
+	state.isCatchingUp = state.currentFrame < state.targetFrame;
+	state.playbackRequested = state.windowActive && !state.isPaused && !state.isDone;
+	var graceMs = Math.max(750, playback_expected_frame_interval_ms(state.speed) * 2 + 250);
+	state.advancingFrames = state.playbackRequested &&
+		playbackStateMonitor.lastAdvanceAt > 0 &&
+		(Date.now() - playbackStateMonitor.lastAdvanceAt) <= graceMs;
+	return state;
+}
+
+function viewer_runtime_ui_signature(state) {
+	return [
+		state.hasReplay ? 1 : 0,
+		state.windowActive ? 1 : 0,
+		state.isPaused ? 1 : 0,
+		state.isDone ? 1 : 0,
+		state.isCatchingUp ? 1 : 0,
+		state.targetFrame,
+		state.canCopyReplayLink ? 1 : 0,
+		state.advancingFrames ? 1 : 0
+	].join('|');
+}
+
+function sync_viewer_runtime_state(force) {
+	var state = get_viewer_runtime_state();
+	window.__openbwViewerRuntimeState = state;
+	var now = Date.now();
+	var signature = viewer_runtime_ui_signature(state);
+	if (!force && viewerRuntimeUiStateCache === signature && (now - viewerRuntimeUiLastSyncAt) < 100) {
+		return state;
+	}
+	viewerRuntimeUiStateCache = signature;
+	viewerRuntimeUiLastSyncAt = now;
+	if (typeof update_play_pause_button === "function") {
+		update_play_pause_button(state);
+	}
+	if (typeof update_permalink_button === "function") {
+		update_permalink_button(state);
+	}
+	if (typeof sync_music_playback_state === "function") {
+		sync_music_playback_state(state);
+	}
+	update_viewport_alert(state);
+	return state;
 }
 
 function play_next_music_track() {
@@ -307,14 +403,24 @@ function play_next_music_track() {
 	audio.addEventListener('ended', function() {
 		play_next_music_track();
 	});
+	audio.addEventListener('pause', function() {
+		if (musicState.suppressPauseSync) return;
+		if (audio.ended) return;
+		setTimeout(function() {
+			if (musicState.audio === audio && typeof sync_viewer_runtime_state === "function") {
+				sync_viewer_runtime_state(true);
+			}
+		}, 0);
+	});
 	musicState.audio = audio;
 	if (typeof apply_music_volume === "function") {
 		apply_music_volume();
 	}
-	sync_music_playback_state();
+	sync_music_playback_state(get_viewer_runtime_state());
 }
 
-function sync_music_playback_state() {
+function sync_music_playback_state(state) {
+	state = state || get_viewer_runtime_state();
 	if (!is_music_enabled()) {
 		stop_music_playback();
 		return;
@@ -325,33 +431,43 @@ function sync_music_playback_state() {
 		return;
 	}
 	if (typeof effective_category_volume === "function" && effective_category_volume('music') <= 0) {
-		musicState.audio.pause();
+		if (!musicState.audio.paused) {
+			musicState.suppressPauseSync = true;
+			musicState.audio.pause();
+			musicState.suppressPauseSync = false;
+		}
 		return;
 	}
-	if (!is_viewer_playback_active()) {
-		musicState.audio.pause();
+	if (!state.advancingFrames) {
+		if (!musicState.audio.paused) {
+			musicState.suppressPauseSync = true;
+			musicState.audio.pause();
+			musicState.suppressPauseSync = false;
+		}
 		return;
 	}
 	if (typeof apply_music_volume === "function") {
 		apply_music_volume();
 	}
-	var playPromise = musicState.audio.play();
-	if (playPromise && typeof playPromise.catch === 'function') {
-		playPromise.catch(function() {});
+	if (musicState.audio.paused) {
+		var playPromise = musicState.audio.play();
+		if (playPromise && typeof playPromise.catch === 'function') {
+			playPromise.catch(function() {});
+		}
 	}
 }
 
 function initialize_music_for_current_replay() {
 	var replayKey = current_replay_music_key();
 	if (musicState.activeReplayKey === replayKey) {
-		sync_music_playback_state();
+		sync_music_playback_state(get_viewer_runtime_state());
 		return;
 	}
 	stop_music_playback();
 	musicState.activeReplayKey = replayKey;
 	musicState.playlist = build_music_playlist_for_current_replay();
 	musicState.index = 0;
-	sync_music_playback_state();
+	sync_music_playback_state(get_viewer_runtime_state());
 }
 
 function register_music_unlock_handlers() {
@@ -360,7 +476,7 @@ function register_music_unlock_handlers() {
 		if (typeof Module !== "undefined") {
 			Module.__openbwAudioUnlocked = true;
 		}
-		sync_music_playback_state();
+		sync_viewer_runtime_state(true);
 	};
 	window.addEventListener('pointerdown', unlock, true);
 	window.addEventListener('keydown', unlock, true);
@@ -369,9 +485,8 @@ function register_music_unlock_handlers() {
 
 function register_playback_visibility_handlers() {
 	var syncPlaybackState = function() {
-		if (typeof sync_music_playback_state === "function") {
-			sync_music_playback_state();
-		}
+		reset_playback_state_monitor();
+		sync_viewer_runtime_state(true);
 	};
 	document.addEventListener('visibilitychange', syncPlaybackState, true);
 	window.addEventListener('focus', function() {
@@ -441,12 +556,6 @@ function update_info_bar(frame) {
 	update_handle_position(_replay_get_value(6) * 200);
     update_timer(_replay_get_value(2));
     update_speed(_replay_get_value(0));
-	if (typeof update_play_pause_button === "function") {
-		update_play_pause_button();
-	}
-	if (typeof sync_music_playback_state === "function") {
-		sync_music_playback_state();
-	}
     
     var array_index = Math.round(frame / 16);
     if (array_index >= resource_count[0].length) {
@@ -742,6 +851,7 @@ function set_replay_playlist(entries, activeIndex) {
 
 function read_replay_entry(entry, canvas) {
 	if (!entry || !entry.file) return;
+	currentReplaySourceUrl = null;
 	Module.print("loading replay from file " + entry.label);
 	var reader = new FileReader();
 	(function() {
@@ -1081,14 +1191,13 @@ function js_pre_main_loop() {
 
 var last_update_frame = 0;
 function js_post_main_loop() {
+	if (pendingRequestedReplayFrame !== null && typeof _replay_get_value === "function") {
+		_replay_set_value(3, Math.min(pendingRequestedReplayFrame, _replay_get_value(4)));
+		pendingRequestedReplayFrame = null;
+	}
 	var frame = _replay_get_value(2);
-	if (typeof update_play_pause_button === "function") {
-		update_play_pause_button();
-	}
-	if (typeof sync_music_playback_state === "function") {
-		sync_music_playback_state();
-	}
-	update_viewport_alert();
+	note_viewer_frame_progress(frame);
+	sync_viewer_runtime_state();
 	if (Math.abs(frame - last_update_frame) >= (_replay_get_value(1) === 1 ? 1 : Math.max(1, Math.min(8, 4 * _replay_get_value(0))))) {
 	    update_info_bar(frame);
 	    update_info_tab();
@@ -1164,10 +1273,10 @@ function show_viewport_alert(text, durationMs) {
 	position_viewport_alert();
 }
 
-function update_viewport_alert() {
+function update_viewport_alert(state) {
+	state = state || get_viewer_runtime_state();
 	var alert = $('#viewport-alert');
-	var hasReplay = main_has_been_called && typeof _replay_get_value === "function" && _replay_get_value(4) > 0;
-	if (!hasReplay) {
+	if (!state.hasReplay) {
 		viewportAlertState.lastNuclearLaunchAlertCount = 0;
 		viewportAlertState.pendingNuclearLaunch = false;
 		viewportAlertState.text = '';
@@ -1175,8 +1284,6 @@ function update_viewport_alert() {
 		alert.removeClass('is-visible').text('');
 		return;
 	}
-	var currentFrame = _replay_get_value(2);
-	var targetFrame = _replay_get_value(3);
 	if (typeof Module !== "undefined" && typeof Module.get_nuclear_launch_alert_count === "function") {
 		var nuclearLaunchAlertCount = Module.get_nuclear_launch_alert_count();
 		if (nuclearLaunchAlertCount > viewportAlertState.lastNuclearLaunchAlertCount) {
@@ -1184,15 +1291,15 @@ function update_viewport_alert() {
 		}
 		viewportAlertState.lastNuclearLaunchAlertCount = nuclearLaunchAlertCount;
 	}
-	if (currentFrame < targetFrame) {
-		var fastForwardText = 'Fast-forwarding to ' + format_frame_time(targetFrame);
+	if (state.isCatchingUp) {
+		var fastForwardText = 'Fast-forwarding to ' + format_frame_time(state.targetFrame);
 		alert.text(fastForwardText).addClass('is-visible');
 		position_viewport_alert();
 		return;
 	}
 	if (viewportAlertState.pendingNuclearLaunch) {
 		viewportAlertState.pendingNuclearLaunch = false;
-		show_viewport_alert('Nuclear launch detected', 4500);
+		show_viewport_alert('Nuclear launch detected.', 4500);
 	}
 	if (viewportAlertState.hideAt && Date.now() >= viewportAlertState.hideAt) {
 		viewportAlertState.hideAt = 0;
@@ -1379,6 +1486,7 @@ function fetch_default_mpqs() {
  *****************************/
 
 function load_replay_url(url) {
+	currentReplaySourceUrl = url;
 	show_loading_replay_screen(url);
     
     var req = new XMLHttpRequest();
@@ -1412,6 +1520,7 @@ function start_replay(buffer, length) {
 	}
 	embeddedReplayState.advanceScheduled = false;
 	reset_pregame_dropzone();
+	reset_playback_state_monitor();
 	$('#zoom-buttons').css('display', 'grid');
 	$('#viewport-export').css('display', 'grid');
 	$('#rv-rc-next-embedded-wrap').css('display', embeddedReplayConfig.enabled ? 'flex' : 'none');
@@ -1460,6 +1569,9 @@ function start_replay(buffer, length) {
 		}
 	    
 	    _load_replay(buffer, length);
+		pendingRequestedReplayFrame = requestedReplayFrame !== null && currentReplaySourceUrl
+			? requestedReplayFrame
+			: null;
     
     first_frame_played = false;
     
@@ -1473,10 +1585,13 @@ function start_replay(buffer, length) {
     for (var i = players.length + 1; i <= 12; i++) {
     	$('.per-player-info' + i).hide();
     }
-    apply_player_row_layout(players.length);
+	apply_player_row_layout(players.length);
 	if (typeof update_player_vision_buttons === "function") {
 		update_player_vision_buttons();
 	}
+	viewerRuntimeUiStateCache = null;
+	viewerRuntimeUiLastSyncAt = 0;
+	sync_viewer_runtime_state(true);
 	if (typeof apply_persisted_viewer_toggle_settings === "function") {
 		apply_persisted_viewer_toggle_settings();
 		if (typeof update_player_vision_buttons === "function") {
@@ -1485,9 +1600,6 @@ function start_replay(buffer, length) {
 	}
 	if (typeof Module !== "undefined" && typeof Module.set_primary_perspective_player === "function") {
 		Module.set_primary_perspective_player(players.length ? players[0] : -1);
-	}
-	if (typeof update_play_pause_button === "function") {
-		update_play_pause_button();
 	}
 	initialize_music_for_current_replay();
 }
