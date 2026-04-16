@@ -581,9 +581,15 @@ jQuery(document).ready( function($) {
 	});
 	
 	$('#game-slider-handle').mousedown(function(){
+	    if (typeof resume_viewer_main_loop === "function") {
+	    	resume_viewer_main_loop();
+	    }
 	    isDown = true;
 	});
 	$('#game-slider').click(function(){
+	    if (typeof resume_viewer_main_loop === "function") {
+	    	resume_viewer_main_loop();
+	    }
 	    isClicked = true;
 	});
 
@@ -617,6 +623,9 @@ jQuery(document).ready( function($) {
 	
 	$('#game-slider').on('moved.zf.slider', function() {
 		if (isDown || isClicked) {
+			if (typeof resume_viewer_main_loop === "function") {
+				resume_viewer_main_loop();
+			}
 			var sliderValue = parseFloat(document.getElementById("sliderOutput").value);
 			if (!Number.isFinite(sliderValue)) {
 				isClicked = false;

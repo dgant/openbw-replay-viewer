@@ -523,7 +523,9 @@ function register_playback_visibility_handlers() {
 	var resumeOnInteraction = function() {
 		resume_viewer_main_loop();
 	};
+	window.addEventListener('mousedown', resumeOnInteraction, true);
 	window.addEventListener('pointerdown', resumeOnInteraction, true);
+	window.addEventListener('click', resumeOnInteraction, true);
 	window.addEventListener('keydown', resumeOnInteraction, true);
 	window.addEventListener('touchstart', resumeOnInteraction, true);
 	window.addEventListener('wheel', resumeOnInteraction, true);
