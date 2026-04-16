@@ -108,6 +108,7 @@ var playbackStateMonitor = {
 };
 var viewerRuntimeUiStateCache = null;
 var viewerRuntimeUiLastSyncAt = 0;
+var viewerMainLoopPausedForIdle = false;
 var viewportAlertState = {
 	lastNuclearLaunchAlertCount: 0,
 	pendingNuclearLaunch: false,
@@ -323,6 +324,34 @@ function playback_expected_frame_interval_ms(speed) {
 	return 42 / safeSpeed;
 }
 
+function resume_viewer_main_loop() {
+	if (!viewerMainLoopPausedForIdle) return;
+	if (typeof Module === "undefined" || typeof Module.resumeMainLoop !== "function") {
+		viewerMainLoopPausedForIdle = false;
+		return;
+	}
+	viewerMainLoopPausedForIdle = false;
+	try {
+		Module.resumeMainLoop();
+	} catch (error) {}
+	reset_playback_state_monitor();
+}
+
+function pause_viewer_main_loop_if_idle(state) {
+	if (viewerMainLoopPausedForIdle) return;
+	if (!state || !state.hasReplay || !state.windowActive) return;
+	if (state.advancingFrames || state.isCatchingUp) return;
+	if (!(state.isPaused || state.isDone)) return;
+	if (state.currentFrame !== state.targetFrame) return;
+	if (typeof Module === "undefined" || typeof Module.pauseMainLoop !== "function") return;
+	try {
+		Module.pauseMainLoop();
+		viewerMainLoopPausedForIdle = true;
+	} catch (error) {
+		viewerMainLoopPausedForIdle = false;
+	}
+}
+
 function get_viewer_runtime_state() {
 	var hasReplay = main_has_been_called && typeof _replay_get_value === "function" && _replay_get_value(4) > 0;
 	var state = {
@@ -388,6 +417,7 @@ function sync_viewer_runtime_state(force) {
 		sync_music_playback_state(state);
 	}
 	update_viewport_alert(state);
+	pause_viewer_main_loop_if_idle(state);
 	return state;
 }
 
@@ -490,6 +520,13 @@ function register_playback_visibility_handlers() {
 		reset_playback_state_monitor();
 		sync_viewer_runtime_state(true);
 	};
+	var resumeOnInteraction = function() {
+		resume_viewer_main_loop();
+	};
+	window.addEventListener('pointerdown', resumeOnInteraction, true);
+	window.addEventListener('keydown', resumeOnInteraction, true);
+	window.addEventListener('touchstart', resumeOnInteraction, true);
+	window.addEventListener('wheel', resumeOnInteraction, true);
 	document.addEventListener('visibilitychange', syncPlaybackState, true);
 	window.addEventListener('focus', function() {
 		viewerWindowFocused = true;
@@ -1543,6 +1580,7 @@ function fetch_default_mpqs() {
  *****************************/
 
 function load_replay_url(url) {
+	resume_viewer_main_loop();
 	currentReplaySourceUrl = url;
 	show_loading_replay_screen(url);
     
@@ -1567,6 +1605,7 @@ function load_replay_url(url) {
 var first_frame_played = false;
 
 function start_replay(buffer, length) {
+	resume_viewer_main_loop();
 	
 	$('#top').css('display', 'none');
 	$('#pregame-overlay').css('display', 'none');
