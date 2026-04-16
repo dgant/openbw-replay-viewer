@@ -376,7 +376,7 @@ function get_viewer_runtime_state() {
 	state.isPaused = _replay_get_value(1) !== 0;
 	state.isDone = state.endFrame > 0 && state.currentFrame >= state.endFrame;
 	state.isCatchingUp = state.currentFrame < state.targetFrame;
-	state.playbackRequested = state.windowActive && !state.isPaused && !state.isDone;
+	state.playbackRequested = !state.isPaused && !state.isDone;
 	var graceMs = Math.max(750, playback_expected_frame_interval_ms(state.speed) * 2 + 250);
 	state.advancingFrames = state.playbackRequested &&
 		playbackStateMonitor.lastAdvanceAt > 0 &&
@@ -517,7 +517,6 @@ function register_music_unlock_handlers() {
 
 function register_playback_visibility_handlers() {
 	var syncPlaybackState = function() {
-		reset_playback_state_monitor();
 		sync_viewer_runtime_state(true);
 	};
 	var resumeOnInteraction = function() {
