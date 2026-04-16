@@ -82,6 +82,7 @@ var embeddedReplayState = {
 var files = [];
 var js_read_buffers = [];
 var is_reading = false;
+var mpq_data_ready = false;
 var is_fetching_default_mpqs = false;
 var mpq_retry_timer = null;
 var mpq_retry_attempt = 0;
@@ -867,7 +868,7 @@ function read_replay_entry(entry, canvas) {
 			} else {
 				load_replay_data_arr = arr;
 				print_to_canvas(entry.label, 15, 80, canvas);
-				if (has_all_files()) {
+				if (mpq_data_ready) {
 					on_read_all_done();
 				}
 			}
@@ -1700,6 +1701,7 @@ function parse_mpq_files() {
     
     if (is_reading) return;
     is_reading = true;
+    mpq_data_ready = false;
     var reads_in_progress = 3;
     for (var i = 0; i != 3; ++i) {
         var reader = new FileReader();
@@ -1711,7 +1713,11 @@ function parse_mpq_files() {
                 js_read_buffers[index] = new Int8Array(e.target.result);
                 --reads_in_progress;
 
-                if (reads_in_progress == 0) on_read_all_done();
+                if (reads_in_progress == 0) {
+                	mpq_data_ready = true;
+                	is_reading = false;
+                	on_read_all_done();
+                }
             };
         })();
         reader.readAsArrayBuffer(files[i]);
