@@ -83,6 +83,7 @@ var files = [];
 var js_read_buffers = [];
 var is_reading = false;
 var mpq_data_ready = false;
+var mpq_load_requested = false;
 var is_fetching_default_mpqs = false;
 var mpq_retry_timer = null;
 var mpq_retry_attempt = 0;
@@ -144,9 +145,9 @@ jQuery(document).ready( function($) {
 			  // Generic error handler for all errors targeted at this database's requests!
 			  console.log("Database error: " + event.target.errorCode);
 			};
-		
-		// the db_handle has successfully been obtained. Now attempt to load the MPQs.
-		load_mpq_from_db();	
+		if (mpq_load_requested) {
+			load_mpq_from_db();
+		}
 	});
 	
 	initialize_canvas(canvas);
@@ -160,6 +161,9 @@ jQuery(document).ready( function($) {
 
 	if (typeof apply_infobar_layout === "function") {
 		apply_infobar_layout();
+	}
+	if (currentReplaySourceUrl || ajax_object.replay_file != null || embeddedReplayConfig.enabled) {
+		ensure_mpqs_loaded();
 	}
 })
 
@@ -241,6 +245,22 @@ function show_loading_files_screen(message) {
 function reset_loading_files_screen() {
 	reset_pregame_dropzone();
 	$('body').removeClass('pregame-active');
+}
+
+function ensure_mpqs_loaded() {
+	mpq_load_requested = true;
+	if (mpq_data_ready || is_reading || is_fetching_default_mpqs) return;
+	if (has_all_files()) {
+		parse_mpq_files();
+		return;
+	}
+	if (db_handle != null) {
+		load_mpq_from_db();
+		return;
+	}
+	if (!window.indexedDB) {
+		fetch_default_mpqs();
+	}
 }
 
 function update_mpq_loading_status(extraLine) {
@@ -870,6 +890,8 @@ function read_replay_entry(entry, canvas) {
 				print_to_canvas(entry.label, 15, 80, canvas);
 				if (mpq_data_ready) {
 					on_read_all_done();
+				} else {
+					ensure_mpqs_loaded();
 				}
 			}
 		};
@@ -1449,6 +1471,7 @@ function store_mpq_in_db() {
 }
 
 function load_mpq_from_db() {
+	if (mpq_data_ready || is_reading || is_fetching_default_mpqs) return;
 
 	var transaction = db_handle.transaction(["mpqs"]);
 	var objectStore = transaction.objectStore("mpqs");
@@ -1548,9 +1571,14 @@ function load_replay_url(url) {
         if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
         	
 	        var arr = new Int8Array(req.response);
-	        var buf = allocate_replay_buffer(arr);
-	        start_replay(buf, arr.length);
-	        _free(buf);
+	        if (mpq_data_ready) {
+	        	var buf = allocate_replay_buffer(arr);
+	        	start_replay(buf, arr.length);
+	        	_free(buf);
+	        } else {
+	        	load_replay_data_arr = arr;
+	        	ensure_mpqs_loaded();
+	        }
         } else if (req.readyState == XMLHttpRequest.DONE) {
         	set_pregame_dropzone_status("Loading replay", "fetching " + url + ": " + req.statusText);
         }
