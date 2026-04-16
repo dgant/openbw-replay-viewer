@@ -199,6 +199,34 @@ function update_sound_button_state() {
 	$('#rv-rc-sound').toggleClass('rv-rc-muted', volumeSettings.muted);
 }
 
+function read_vertical_slider_height(element, fallbackValue) {
+	if (!element) return fallbackValue;
+	var computedHeight = parseFloat(window.getComputedStyle(element).height);
+	if (isFinite(computedHeight) && computedHeight > 0) return computedHeight;
+	var rectHeight = element.getBoundingClientRect().height;
+	if (isFinite(rectHeight) && rectHeight > 0) return rectHeight;
+	return fallbackValue;
+}
+
+function sync_overall_volume_slider_geometry() {
+	var sliderElement = document.getElementById('volume-slider');
+	var handleElement = document.getElementById('volume-slider-handle');
+	if (!sliderElement || !handleElement) return;
+	var fillElement = sliderElement.querySelector('[data-slider-fill]');
+	var level = sanitize_unit_interval(volumeSettings.level, 0.5);
+	var percent = Math.round(level * 100);
+	var rootFontSize = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+	var sliderHeight = read_vertical_slider_height(sliderElement, 120);
+	var handleHeight = read_vertical_slider_height(handleElement, rootFontSize * 1.4);
+	var maxTravel = Math.max(0, sliderHeight - handleHeight);
+	var topPercent = sliderHeight > 0 ? (maxTravel * level / sliderHeight) * 100 : 0;
+	handleElement.style.top = topPercent.toFixed(2) + '%';
+	handleElement.setAttribute('aria-valuenow', percent);
+	if (fillElement) {
+		fillElement.style.height = percent + '%';
+	}
+}
+
 function update_overall_volume_slider_ui() {
 	var percent = Math.round(sanitize_unit_interval(volumeSettings.level, 0.5) * 100);
 	var volumeOutput = $('#volumeOutput');
@@ -207,13 +235,7 @@ function update_overall_volume_slider_ui() {
 	}
 	isSyncingOverallVolumeSlider = true;
 	try {
-		var sliderPlugin = $('#volume-slider').data('zfPlugin');
-		if (sliderPlugin && sliderPlugin.$handle) {
-			sliderPlugin._setHandlePos(sliderPlugin.$handle, percent, true);
-		} else {
-			$('#volume-slider-handle').css('top', '' + (88.8 * sanitize_unit_interval(volumeSettings.level, 0.5)) + '%');
-			$('#volume-slider-handle').attr('aria-valuenow', percent);
-		}
+		sync_overall_volume_slider_geometry();
 	} finally {
 		isSyncingOverallVolumeSlider = false;
 	}
@@ -1115,6 +1137,8 @@ function apply_persisted_viewer_toggle_settings() {
 
 function show_volume_slider() {
 	$('#volume-slider-wrapper').css("display", "block");
+	sync_overall_volume_slider_geometry();
+	requestAnimationFrame(sync_overall_volume_slider_geometry);
 }
 
 function hide_volume_slider() {
