@@ -371,10 +371,8 @@ function open_export_settings_modal() {
 	$('#export_settings').foundation('open');
 }
 
-jQuery(document).ready( function($) {	
-	
-	var ctx = document.getElementById("infoChartCanvas");
-	infoChart = new Chart(ctx, {
+function create_info_chart_config() {
+	return {
 	    type: 'line',
 	    animation: {duration: 0},
 	    data: {
@@ -443,8 +441,7 @@ jQuery(document).ready( function($) {
 	            borderWidth: 1,
 	            borderColor: '#b07042',
 	            hidden: true
-	        }
-	        ]
+	        }]
 	    },
 	    options: {
 	    	legend: {
@@ -467,7 +464,19 @@ jQuery(document).ready( function($) {
 
 	        }
 	    }
-	});
+	};
+}
+
+function ensure_info_chart() {
+	if (infoChart) return infoChart;
+	if (typeof Chart === "undefined") return null;
+	var ctx = document.getElementById("infoChartCanvas");
+	if (!ctx) return null;
+	infoChart = new Chart(ctx, create_info_chart_config());
+	return infoChart;
+}
+
+jQuery(document).ready( function($) {	
 
 	// Ensure keyboard events on input elements are not swallowed by OpenBW
 	$("input, textarea, select").on("keyup keydown keypress", function(e) {
@@ -797,6 +806,9 @@ function zoomIn() {
 var infoChart;
 
 function toggle_graphs(tab_nr) {
+	if (tab_nr === 1) {
+		ensure_info_chart();
+	}
 	
 	 if ($('#graphs_tab').is(":visible")) {
 		 

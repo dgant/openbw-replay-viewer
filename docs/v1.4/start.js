@@ -515,6 +515,10 @@ function update_graphs(frame) {
 	
 	if ($('#graphs_tab').is(":visible")) {
 		if ($('#graphs_tab_panel1').hasClass("is-active")) {
+			if (!infoChart && typeof ensure_info_chart === "function") {
+				ensure_info_chart();
+			}
+			if (!infoChart) return;
 			var arrayIndex = Math.round(frame / 16);
 
 			infoChart.data.labels = resource_count[0].slice(0, arrayIndex);
