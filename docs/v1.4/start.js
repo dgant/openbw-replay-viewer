@@ -149,6 +149,7 @@ jQuery(document).ready( function($) {
 	});
 	
 	initialize_canvas(canvas);
+	install_canvas_resize_watcher();
 	install_mobile_camera_controls(canvas);
 	
 	add_drag_and_drop_listeners(document.body, canvas);
@@ -965,6 +966,8 @@ let currentSize = {
 	renderHeight: 0,
 };
 let exportRenderSize = null;
+let canvasResizePending = true;
+let canvasAreaResizeObserver = null;
 const RESIZE_SURFACE_BUDGET_BYTES = 80 * 1024 * 1024;
 const RESIZE_BYTES_PER_PIXEL_ESTIMATE = 12;
 
@@ -976,6 +979,7 @@ function invalidate_canvas_size_cache() {
 		renderWidth: 0,
 		renderHeight: 0,
 	};
+	canvasResizePending = true;
 }
 
 function set_export_render_size(width, height) {
@@ -987,10 +991,12 @@ function set_export_render_size(width, height) {
 	} else {
 		exportRenderSize = null;
 	}
+	canvasResizePending = true;
 }
 
 function clear_export_render_size() {
 	exportRenderSize = null;
+	canvasResizePending = true;
 }
 
 function current_scaled_render_size(renderWidth, renderHeight, zoom) {
@@ -1021,10 +1027,53 @@ function find_safe_zoom_level(renderWidth, renderHeight, requestedZoomLevel) {
 	return 4;
 }
 
+function get_canvas_area_live_size() {
+	const canvasArea = document.getElementById('canvas-area');
+	if (!canvasArea) {
+		return { width: 0, height: 0 };
+	}
+	const rect = canvasArea.getBoundingClientRect();
+	return {
+		width: Math.max(0, Math.round(rect.width)),
+		height: Math.max(0, Math.round(rect.height))
+	};
+}
+
+function schedule_canvas_resize(forceInvalidate) {
+	if (forceInvalidate) {
+		invalidate_canvas_size_cache();
+	} else {
+		canvasResizePending = true;
+	}
+}
+
+function install_canvas_resize_watcher() {
+	const canvasArea = document.getElementById('canvas-area');
+	if (!canvasArea) return;
+	if (canvasAreaResizeObserver) {
+		canvasAreaResizeObserver.disconnect();
+		canvasAreaResizeObserver = null;
+	}
+	if (typeof ResizeObserver === 'function') {
+		canvasAreaResizeObserver = new ResizeObserver(function() {
+			schedule_canvas_resize();
+		});
+		canvasAreaResizeObserver.observe(canvasArea);
+	}
+	window.addEventListener('resize', function() {
+		schedule_canvas_resize(true);
+	}, true);
+	if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
+		window.visualViewport.addEventListener('resize', function() {
+			schedule_canvas_resize(true);
+		}, true);
+	}
+}
+
 function resize_canvas(canvas) {
 
 	const canvasArea = document.getElementById('canvas-area');
-	const liveSize = canvasArea.getBoundingClientRect();
+	const liveSize = get_canvas_area_live_size();
 	const renderWidth = exportRenderSize ? exportRenderSize.width : liveSize.width;
 	const renderHeight = exportRenderSize ? exportRenderSize.height : liveSize.height;
 	let effectiveZoomLevel = exportRenderSize ? zoomLevel : find_safe_zoom_level(renderWidth, renderHeight, zoomLevel);
@@ -1034,7 +1083,8 @@ function resize_canvas(canvas) {
 		if (typeof update_zoom_buttons === "function") update_zoom_buttons();
 	}
 	if (currentSize.width === liveSize.width && currentSize.height === liveSize.height && currentSize.zoomLevel === effectiveZoomLevel && currentSize.renderWidth === renderWidth && currentSize.renderHeight === renderHeight) {
-		return;
+		canvasResizePending = false;
+		return true;
 	}
 
 	let zoomFactor = 1.0 * Math.pow(1.1, effectiveZoomLevel);
@@ -1110,6 +1160,7 @@ function resize_canvas(canvas) {
 	if (viewportAlertState.hideAt) {
 		position_viewport_alert();
 	}
+	canvasResizePending = false;
 	return true;
 }
 
@@ -1185,8 +1236,9 @@ function allocate_replay_buffer(arr) {
  *****************************/
 
 function js_pre_main_loop() {
-	
-	resize_canvas(Module.canvas);
+	if (canvasResizePending) {
+		resize_canvas(Module.canvas);
+	}
 }
 
 var last_update_frame = 0;
