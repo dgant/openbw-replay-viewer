@@ -203,6 +203,10 @@ function set_pregame_dropzone_status(title, message) {
 	dropzone.classList.add('pregame-dropzone-status');
 }
 
+function reveal_pregame_homepage() {
+	document.body.classList.remove('pregame-boot-pending');
+}
+
 function reset_pregame_dropzone() {
 	var dropzone = document.querySelector('.pregame-dropzone');
 	if (!dropzone || !remoteReplayStatus) return;
@@ -376,7 +380,7 @@ function get_viewer_runtime_state() {
 	state.isPaused = _replay_get_value(1) !== 0;
 	state.isDone = state.endFrame > 0 && state.currentFrame >= state.endFrame;
 	state.isCatchingUp = state.currentFrame < state.targetFrame;
-	state.playbackRequested = !state.isPaused && !state.isDone;
+	state.playbackRequested = state.windowActive && !state.isPaused && !state.isDone;
 	var graceMs = Math.max(750, playback_expected_frame_interval_ms(state.speed) * 2 + 250);
 	state.advancingFrames = state.playbackRequested &&
 		playbackStateMonitor.lastAdvanceAt > 0 &&
@@ -517,6 +521,9 @@ function register_music_unlock_handlers() {
 
 function register_playback_visibility_handlers() {
 	var syncPlaybackState = function() {
+		if (document.hidden || !viewerWindowFocused) {
+			reset_playback_state_monitor();
+		}
 		sync_viewer_runtime_state(true);
 	};
 	var resumeOnInteraction = function() {
@@ -999,6 +1006,13 @@ function load_replay_file(files, canvas) {
 	if (!entries.length) return;
 	set_replay_playlist(entries, 0);
 	load_replay_playlist_index(0, canvas);
+}
+
+function open_replay_picker() {
+	var input = document.getElementById("select_rep_file");
+	if (!input) return;
+	input.value = '';
+	input.click();
 }
 
 let currentSize = {
@@ -1607,6 +1621,7 @@ var first_frame_played = false;
 
 function start_replay(buffer, length) {
 	resume_viewer_main_loop();
+	reveal_pregame_homepage();
 	
 	$('#top').css('display', 'none');
 	$('#pregame-overlay').css('display', 'none');
@@ -1734,6 +1749,7 @@ function on_read_all_done() {
         } else if (embeddedReplayConfig.enabled) {
         	load_next_embedded_replay();
         } else {
+        	reveal_pregame_homepage();
         	// $('#play_demo_button').removeClass('disabled');
         	$('#select_replay_label').removeClass('disabled');
         }

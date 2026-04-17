@@ -707,6 +707,9 @@ jQuery(document).ready( function($) {
 	$('#rv-rc-copy-link').on('click', function() {
 		copy_replay_link_for_current_frame();
 	});
+	$('#rv-rc-open-replay').on('click', function() {
+		open_replay_picker();
+	});
 	$('#rv-rc-export-settings').on('click', function() {
 		open_export_settings_modal();
 	});

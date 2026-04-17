@@ -6897,6 +6897,12 @@ body#tinymce {
   border: none;
   margin: 0; }
 
+body.pregame-boot-pending .pregame-drop-copy,
+body.pregame-boot-pending .pregame-drop-divider,
+body.pregame-boot-pending .pregame-browse-button,
+body.pregame-boot-pending .pregame-notes {
+  visibility: hidden; }
+
 .pregame-dropzone {
   width: min(66vw, 56rem);
   min-height: 0;
@@ -7756,6 +7762,7 @@ body.pregame-active #info-dock .info-dock-header {
 
 #viewport-export .rv-rc-copy-link,
 #viewport-export .rv-rc-export,
+#viewport-export .rv-rc-open-replay,
 #viewport-export .rv-rc-export-settings {
   padding: 0;
   margin: 0;
@@ -7772,6 +7779,11 @@ body.pregame-active #info-dock .info-dock-header {
   #viewport-export .rv-rc-copy-link::before {
     content: "\23F1";
     font-family: inherit;
+    font-size: 18px;
+    line-height: 1; }
+  #viewport-export .rv-rc-open-replay::before {
+    content: "\f07b";
+    font-family: 'FontAwesome';
     font-size: 18px;
     line-height: 1; }
   #viewport-export .rv-rc-export-settings::before {
