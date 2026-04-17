@@ -106,10 +106,6 @@ var playbackStateMonitor = {
 	lastAdvanceAt: 0,
 	lastSeenAt: 0
 };
-var playbackVisibilityGate = {
-	active: false,
-	shouldResume: false
-};
 var viewerRuntimeUiStateCache = null;
 var viewerRuntimeUiLastSyncAt = 0;
 var viewerMainLoopPausedForIdle = false;
@@ -384,44 +380,12 @@ function get_viewer_runtime_state() {
 	state.isPaused = _replay_get_value(1) !== 0;
 	state.isDone = state.endFrame > 0 && state.currentFrame >= state.endFrame;
 	state.isCatchingUp = state.currentFrame < state.targetFrame;
-	state.playbackRequested = state.windowActive && !state.isPaused && !state.isDone;
+	state.playbackRequested = !state.isPaused && !state.isDone;
 	var graceMs = Math.max(750, playback_expected_frame_interval_ms(state.speed) * 2 + 250);
 	state.advancingFrames = state.playbackRequested &&
 		playbackStateMonitor.lastAdvanceAt > 0 &&
 		(Date.now() - playbackStateMonitor.lastAdvanceAt) <= graceMs;
 	return state;
-}
-
-function sync_playback_visibility_gate(state) {
-	state = state || get_viewer_runtime_state();
-	if (!state.hasReplay || typeof _replay_set_value !== "function") {
-		playbackVisibilityGate.active = false;
-		playbackVisibilityGate.shouldResume = false;
-		return false;
-	}
-	if (!state.windowActive) {
-		if (!playbackVisibilityGate.active) {
-			playbackVisibilityGate.active = true;
-			playbackVisibilityGate.shouldResume = !state.isPaused && !state.isDone;
-		}
-		if (playbackVisibilityGate.shouldResume && !state.isPaused) {
-			_replay_set_value(1, 1);
-			reset_playback_state_monitor();
-			return true;
-		}
-		return false;
-	}
-	if (!playbackVisibilityGate.active) return false;
-	var shouldResume = playbackVisibilityGate.shouldResume;
-	playbackVisibilityGate.active = false;
-	playbackVisibilityGate.shouldResume = false;
-	if (shouldResume && state.isPaused && !state.isDone) {
-		_replay_set_value(1, 0);
-		resume_viewer_main_loop();
-		reset_playback_state_monitor();
-		return true;
-	}
-	return false;
 }
 
 function viewer_runtime_ui_signature(state) {
@@ -439,9 +403,6 @@ function viewer_runtime_ui_signature(state) {
 
 function sync_viewer_runtime_state(force) {
 	var state = get_viewer_runtime_state();
-	if (sync_playback_visibility_gate(state)) {
-		state = get_viewer_runtime_state();
-	}
 	window.__openbwViewerRuntimeState = state;
 	var now = Date.now();
 	var signature = viewer_runtime_ui_signature(state);
