@@ -535,14 +535,12 @@ jQuery(document).ready( function($) {
 		// Commands that only work during a replay
 		switch(code) {
 			case 32: // space
-			case 80: // p
+			case 19: // pause/break
 				toggle_pause();
 				return false;
 			case 65: // a
-			case 85: // u
 				play_faster();
 				return false;
-			case 90: // z
 			case 68: // d
 				play_slower();
 				return false;
@@ -562,16 +560,16 @@ jQuery(document).ready( function($) {
 				ensure_paused();
 				jump_frames(10);
 				return false;
-			case 88: // x
+			case 90: // z
 				jump_seconds(-30);
 				return false;
-			case 67: // c
+			case 88: // x
 				jump_seconds(-10);
 				return false;
-			case 86: // v
+			case 67: // c
 				jump_seconds(10);
 				return false;
-			case 66: // b
+			case 86: // v
 				jump_seconds(30);
 				return false;
 			case 71: // g
