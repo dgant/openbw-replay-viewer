@@ -7762,9 +7762,10 @@ body.pregame-active #info-dock .info-dock-header {
     display: none !important; }
 #viewport-export {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 40px;
-  gap: 8px; }
+  grid-template-columns: repeat(2, 40px);
+  grid-auto-rows: 40px;
+  gap: 8px;
+  align-items: start; }
 
 #viewport-export .rv-rc-copy-link,
 #viewport-export .rv-rc-export,
