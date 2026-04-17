@@ -7357,6 +7357,12 @@ body.pregame-active #info-dock .info-dock-header {
 #quick_help table td {
   padding: 0.35rem 0 0.45rem 0; }
 
+#quick_help table tbody tr:nth-child(even),
+#quick_help table tbody tr:nth-child(odd),
+#quick_help table.hover tbody tr:hover,
+#quick_help table.hover tbody tr:nth-of-type(even):hover {
+  background: transparent; }
+
 .intro {
   max-width: 75rem;
   margin-left: auto;
