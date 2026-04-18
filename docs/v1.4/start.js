@@ -74,8 +74,11 @@ var embeddedReplayConfig = {
 var embeddedReplayState = {
 	watchedKeys: {},
 	currentGameKey: null,
+	pendingGameKey: null,
 	advanceScheduled: false,
+	advanceTimer: null,
 	fetchInProgress: false,
+	loadingReplay: false,
 	retryTimer: null
 };
 
@@ -850,12 +853,62 @@ function update_replay_playlist_controls() {
 	$('#playlist-next').prop('disabled', replayPlaylist.length <= 1);
 }
 
-function show_embedded_home_message(message) {
+function show_embedded_home_message(title, message) {
 	$('#pregame-overlay').css('display', 'grid');
+	var overlay = document.getElementById('pregame-overlay');
+	if (overlay) overlay.classList.add('pregame-loading');
 	$('body').addClass('pregame-active');
 	var notes = document.querySelector('.pregame-notes');
 	if (notes) notes.style.display = 'none';
-	set_pregame_dropzone_status("", message);
+	set_pregame_dropzone_status(title || "", message);
+}
+
+function clear_embedded_advance_timer() {
+	if (embeddedReplayState.advanceTimer) {
+		clearTimeout(embeddedReplayState.advanceTimer);
+		embeddedReplayState.advanceTimer = null;
+	}
+	embeddedReplayState.advanceScheduled = false;
+}
+
+function begin_embedded_replay_load(gameKey) {
+	clear_embedded_advance_timer();
+	embeddedReplayState.loadingReplay = true;
+	embeddedReplayState.pendingGameKey = gameKey || null;
+}
+
+function abort_embedded_replay_load() {
+	clear_embedded_advance_timer();
+	embeddedReplayState.loadingReplay = false;
+	embeddedReplayState.pendingGameKey = null;
+}
+
+function finish_embedded_replay_load() {
+	clear_embedded_advance_timer();
+	if (embeddedReplayState.pendingGameKey) {
+		embeddedReplayState.currentGameKey = embeddedReplayState.pendingGameKey;
+	}
+	embeddedReplayState.pendingGameKey = null;
+	embeddedReplayState.loadingReplay = false;
+}
+
+function schedule_embedded_advance_for_current_replay(delayMs) {
+	if (!embeddedReplayConfig.enabled || embeddedReplayState.loadingReplay || embeddedReplayState.advanceScheduled || !embeddedReplayState.currentGameKey) {
+		return false;
+	}
+	var scheduledGameKey = embeddedReplayState.currentGameKey;
+	embeddedReplayState.advanceScheduled = true;
+	embeddedReplayState.watchedKeys[scheduledGameKey] = true;
+	embeddedReplayState.advanceTimer = setTimeout(function() {
+		embeddedReplayState.advanceTimer = null;
+		if (!embeddedReplayConfig.enabled || embeddedReplayState.loadingReplay || embeddedReplayState.currentGameKey !== scheduledGameKey) {
+			embeddedReplayState.advanceScheduled = false;
+			return;
+		}
+		embeddedReplayState.advanceScheduled = false;
+		load_next_embedded_replay();
+	}, Math.max(0, delayMs || 0));
+	return true;
 }
 
 function format_basil_replay_url(botName, opponentName, mapName, gameHash) {
@@ -917,14 +970,16 @@ function schedule_embedded_retry() {
 }
 
 function load_next_embedded_replay() {
-	if (!embeddedReplayConfig.enabled || embeddedReplayState.fetchInProgress) return;
+	if (!embeddedReplayConfig.enabled || embeddedReplayState.fetchInProgress || embeddedReplayState.loadingReplay) return;
 	embeddedReplayState.fetchInProgress = true;
-	show_embedded_home_message("Loading replay list...");
+	begin_embedded_replay_load(null);
+	show_embedded_home_message("Loading replay list", "Fetching recent BASIL replays...");
 	fetch_embedded_replay_candidates()
 		.then(function(candidates) {
 			embeddedReplayState.fetchInProgress = false;
 			if (!candidates.length) {
-				show_embedded_home_message("No replays available");
+				abort_embedded_replay_load();
+				show_embedded_home_message("Replay stream unavailable", "No replays available");
 				schedule_embedded_retry();
 				return;
 			}
@@ -935,12 +990,13 @@ function load_next_embedded_replay() {
 				embeddedReplayState.watchedKeys = {};
 				selected = candidates[0];
 			}
-			embeddedReplayState.currentGameKey = selected.key;
+			begin_embedded_replay_load(selected.key);
 			load_replay_url(selected.replayUrl);
 		})
 		.catch(function(error) {
 			embeddedReplayState.fetchInProgress = false;
-			show_embedded_home_message(error && error.message ? error.message : "Failed to load replay list");
+			abort_embedded_replay_load();
+			show_embedded_home_message("Replay stream unavailable", error && error.message ? error.message : "Failed to load replay list");
 			schedule_embedded_retry();
 		});
 }
@@ -1372,15 +1428,10 @@ function js_post_main_loop() {
 	    update_graphs(frame);
 	    last_update_frame = frame;
 	}
-	if (embeddedReplayConfig.enabled && embeddedReplayState.currentGameKey && !embeddedReplayState.advanceScheduled) {
+	if (embeddedReplayConfig.enabled && embeddedReplayState.currentGameKey && !embeddedReplayState.loadingReplay && !embeddedReplayState.advanceScheduled && !document.body.classList.contains('pregame-active')) {
 		var endFrame = _replay_get_value(4);
 		if (endFrame > 0 && frame >= endFrame) {
-			embeddedReplayState.advanceScheduled = true;
-			embeddedReplayState.watchedKeys[embeddedReplayState.currentGameKey] = true;
-			setTimeout(function() {
-				embeddedReplayState.advanceScheduled = false;
-				load_next_embedded_replay();
-			}, 1000);
+			schedule_embedded_advance_for_current_replay(1000);
 		}
 	}
 }
@@ -1659,18 +1710,21 @@ function load_replay_url(url) {
 	show_loading_replay_screen(url);
     
     var req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-    	
-        if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
-        	
-	        var arr = new Int8Array(req.response);
-	        var buf = allocate_replay_buffer(arr);
-	        start_replay(buf, arr.length);
-	        _free(buf);
-        } else if (req.readyState == XMLHttpRequest.DONE) {
-        	set_pregame_dropzone_status("Loading replay", "fetching " + url + ": " + req.statusText);
-        }
-    }
+	    req.onreadystatechange = function() {
+	    	
+	        if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
+	        	
+		        var arr = new Int8Array(req.response);
+		        var buf = allocate_replay_buffer(arr);
+		        start_replay(buf, arr.length);
+		        _free(buf);
+	        } else if (req.readyState == XMLHttpRequest.DONE) {
+	        	if (embeddedReplayConfig.enabled) {
+	        		abort_embedded_replay_load();
+	        	}
+	        	set_pregame_dropzone_status("Loading replay", "fetching " + url + ": " + req.statusText);
+	        }
+	    }
     req.responseType = "arraybuffer";
     req.open("GET", url, true);
     req.send();
@@ -1689,7 +1743,8 @@ function start_replay(buffer, length) {
 		clearTimeout(embeddedReplayState.retryTimer);
 		embeddedReplayState.retryTimer = null;
 	}
-	embeddedReplayState.advanceScheduled = false;
+	if (embeddedReplayConfig.enabled) finish_embedded_replay_load();
+	else clear_embedded_advance_timer();
 	reset_pregame_dropzone();
 	reset_playback_state_monitor();
 	$('#zoom-buttons').css('display', 'grid');
