@@ -67,6 +67,10 @@ let exportState = null;
 let scrubPreviewFrame = null;
 let isDraggingVolumeSlider = false;
 let isSyncingOverallVolumeSlider = false;
+let lastSliderPointerPageX = 0;
+let lastSliderPointerPageY = 0;
+let lastSliderPointerClientX = 0;
+let lastSliderPointerClientY = 0;
 let exportSettings = load_export_settings();
 let modalPlaybackState = {
 	openIds: {},
@@ -100,6 +104,54 @@ function base_export_settings() {
 		modalTitle: config.modalTitle || "Exporting video",
 		modalMessage: config.modalMessage || "Recording replay to WebM from the opening frame at maximum replay speed."
 	};
+}
+
+function remember_slider_pointer_position(event) {
+	if (!event) return;
+	if (Number.isFinite(event.pageX)) lastSliderPointerPageX = event.pageX;
+	else if (Number.isFinite(event.clientX)) lastSliderPointerPageX = event.clientX + window.scrollX;
+	if (Number.isFinite(event.pageY)) lastSliderPointerPageY = event.pageY;
+	else if (Number.isFinite(event.clientY)) lastSliderPointerPageY = event.clientY + window.scrollY;
+	if (Number.isFinite(event.clientX)) lastSliderPointerClientX = event.clientX;
+	if (Number.isFinite(event.clientY)) lastSliderPointerClientY = event.clientY;
+}
+
+function release_interrupted_slider_drag() {
+	var gameSlider = $('#game-slider');
+	var volumeSlider = $('#volume-slider');
+	var foundationDragging =
+		gameSlider.data('dragging') ||
+		volumeSlider.data('dragging') ||
+		$('#game-slider-handle').hasClass('is-dragging') ||
+		$('#volume-slider-handle').hasClass('is-dragging');
+
+	if (foundationDragging) {
+		var syntheticMouseUp = $.Event('mouseup', {
+			which: 1,
+			button: 0,
+			pageX: lastSliderPointerPageX,
+			pageY: lastSliderPointerPageY,
+			clientX: lastSliderPointerClientX,
+			clientY: lastSliderPointerClientY
+		});
+		$('body').trigger(syntheticMouseUp);
+	}
+
+	gameSlider.data('dragging', false);
+	volumeSlider.data('dragging', false);
+	$('#game-slider-handle, #volume-slider-handle').removeClass('is-dragging');
+	$('#game-slider .slider-fill, #volume-slider .slider-fill').removeClass('is-dragging');
+
+	if (isDown || isClicked) {
+		isDown = false;
+		isClicked = false;
+		scrubPreviewFrame = null;
+		update_timer(_replay_get_value(2));
+	}
+	if (isDraggingVolumeSlider) {
+		isDraggingVolumeSlider = false;
+		hide_volume_slider();
+	}
 }
 
 function display_name_for_icon(category, id) {
@@ -638,16 +690,21 @@ jQuery(document).ready( function($) {
 	});
 	
 	$('#game-slider-handle').mousedown(function(){
+	    remember_slider_pointer_position(arguments[0]);
 	    if (typeof resume_viewer_main_loop === "function") {
 	    	resume_viewer_main_loop();
 	    }
 	    isDown = true;
 	});
 	$('#game-slider').click(function(){
+	    remember_slider_pointer_position(arguments[0]);
 	    if (typeof resume_viewer_main_loop === "function") {
 	    	resume_viewer_main_loop();
 	    }
 	    isClicked = true;
+	});
+	$(document).on('mousedown.info-bar-slider-drag mousemove.info-bar-slider-drag', function(event) {
+		remember_slider_pointer_position(event);
 	});
 
 	$(document).mouseup(function(){
@@ -663,6 +720,13 @@ jQuery(document).ready( function($) {
 			}
 		}
 	}); 
+	$(window).on('blur.info-bar-slider-drag', function() {
+		release_interrupted_slider_drag();
+	});
+	$(document).on('mouseout.info-bar-slider-drag', function(event) {
+		if (event.relatedTarget || event.toElement) return;
+		release_interrupted_slider_drag();
+	});
 	
 	$(window).on('resize', function(){
 		document.getElementById("canvas").innerWidth = window.innerWidth;
@@ -804,6 +868,7 @@ jQuery(document).ready( function($) {
 		}
 	});
 	$('#volume-slider, #volume-slider-handle').on('mousedown', function() {
+		remember_slider_pointer_position(arguments[0]);
 		isDraggingVolumeSlider = true;
 		show_volume_slider();
 	});
