@@ -109,6 +109,10 @@ var playbackStateMonitor = {
 var viewerRuntimeUiStateCache = null;
 var viewerRuntimeUiLastSyncAt = 0;
 var viewerMainLoopPausedForIdle = false;
+var viewerStaticRepaintToken = 0;
+var viewerInteractionHoldUntil = 0;
+var viewerPointerInteractionActive = false;
+var viewerLastDoneState = false;
 var viewportAlertState = {
 	lastNuclearLaunchAlertCount: 0,
 	pendingNuclearLaunch: false,
@@ -341,10 +345,27 @@ function resume_viewer_main_loop() {
 	reset_playback_state_monitor();
 }
 
+function hold_viewer_main_loop_awake(ms) {
+	viewerInteractionHoldUntil = Math.max(viewerInteractionHoldUntil, Date.now() + Math.max(0, ms || 0));
+}
+
+function schedule_static_repaint_if_needed(delays) {
+	if (typeof request_static_repaint_if_needed !== "function") return;
+	var repaintToken = ++viewerStaticRepaintToken;
+	(delays || [0]).forEach(function(delay) {
+		window.setTimeout(function() {
+			if (repaintToken !== viewerStaticRepaintToken) return;
+			request_static_repaint_if_needed();
+		}, Math.max(0, delay || 0));
+	});
+}
+
 function pause_viewer_main_loop_if_idle(state) {
 	if (viewerMainLoopPausedForIdle) return;
 	if (!state || !state.hasReplay || !state.windowActive) return;
 	if (state.advancingFrames || state.isCatchingUp) return;
+	if (viewerPointerInteractionActive) return;
+	if (Date.now() < viewerInteractionHoldUntil) return;
 	if (!(state.isPaused || state.isDone)) return;
 	if (state.currentFrame !== state.targetFrame) return;
 	if (typeof Module === "undefined" || typeof Module.pauseMainLoop !== "function") return;
@@ -421,6 +442,10 @@ function sync_viewer_runtime_state(force) {
 		sync_music_playback_state(state);
 	}
 	update_viewport_alert(state);
+	if (state.hasReplay && state.isDone && !viewerLastDoneState) {
+		schedule_static_repaint_if_needed([0, 120, 360]);
+	}
+	viewerLastDoneState = state.hasReplay ? state.isDone : false;
 	pause_viewer_main_loop_if_idle(state);
 	return state;
 }
@@ -522,12 +547,26 @@ function register_music_unlock_handlers() {
 function register_playback_visibility_handlers() {
 	var syncPlaybackState = function() {
 		if (document.hidden || !viewerWindowFocused) {
+			viewerPointerInteractionActive = false;
+			viewerInteractionHoldUntil = 0;
+		}
+		if (document.hidden || !viewerWindowFocused) {
 			reset_playback_state_monitor();
 		}
 		sync_viewer_runtime_state(true);
 	};
 	var resumeOnInteraction = function() {
+		hold_viewer_main_loop_awake(750);
 		resume_viewer_main_loop();
+	};
+	var markPointerActive = function() {
+		viewerPointerInteractionActive = true;
+		hold_viewer_main_loop_awake(1000);
+		resume_viewer_main_loop();
+	};
+	var markPointerInactive = function() {
+		viewerPointerInteractionActive = false;
+		hold_viewer_main_loop_awake(500);
 	};
 	window.addEventListener('mousedown', resumeOnInteraction, true);
 	window.addEventListener('pointerdown', resumeOnInteraction, true);
@@ -535,6 +574,26 @@ function register_playback_visibility_handlers() {
 	window.addEventListener('keydown', resumeOnInteraction, true);
 	window.addEventListener('touchstart', resumeOnInteraction, true);
 	window.addEventListener('wheel', resumeOnInteraction, true);
+	window.addEventListener('mousedown', markPointerActive, true);
+	window.addEventListener('pointerdown', markPointerActive, true);
+	window.addEventListener('touchstart', markPointerActive, true);
+	window.addEventListener('mousemove', function() {
+		if (!viewerPointerInteractionActive) return;
+		hold_viewer_main_loop_awake(1000);
+	}, true);
+	window.addEventListener('pointermove', function() {
+		if (!viewerPointerInteractionActive) return;
+		hold_viewer_main_loop_awake(1000);
+	}, true);
+	window.addEventListener('touchmove', function() {
+		if (!viewerPointerInteractionActive) return;
+		hold_viewer_main_loop_awake(1000);
+	}, true);
+	window.addEventListener('mouseup', markPointerInactive, true);
+	window.addEventListener('pointerup', markPointerInactive, true);
+	window.addEventListener('pointercancel', markPointerInactive, true);
+	window.addEventListener('touchend', markPointerInactive, true);
+	window.addEventListener('touchcancel', markPointerInactive, true);
 	document.addEventListener('visibilitychange', syncPlaybackState, true);
 	window.addEventListener('focus', function() {
 		viewerWindowFocused = true;
