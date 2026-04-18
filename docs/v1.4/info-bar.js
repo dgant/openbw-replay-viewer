@@ -1211,12 +1211,25 @@ function update_permalink_button(state) {
 	$('#rv-rc-copy-link').toggle(enabled);
 }
 
+function request_static_repaint_if_needed() {
+	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._ui_force_static_redraw !== "function" || typeof _replay_get_value !== "function") {
+		return;
+	}
+	var endFrame = _replay_get_value(4);
+	if (endFrame <= 0) return;
+	var isPaused = _replay_get_value(1) === 1;
+	var atOrPastEnd = _replay_get_value(2) >= endFrame;
+	if (!isPaused && !atOrPastEnd) return;
+	_ui_force_static_redraw();
+}
+
 function toggle_observer() {
 	if (!main_has_been_called || typeof Module === "undefined" || typeof Module._observer_get_value !== "function" || typeof Module._observer_set_value !== "function") return;
 	_observer_set_value(_observer_get_value() === 0 ? 1 : 0);
 	viewerToggleSettings.observerEnabled = _observer_get_value() !== 0;
 	persist_viewer_toggle_settings();
 	update_observer_button();
+	request_static_repaint_if_needed();
 }
 
 function toggle_fow() {
@@ -1226,6 +1239,7 @@ function toggle_fow() {
 	persist_viewer_toggle_settings();
 	update_fow_button();
 	update_player_vision_buttons();
+	request_static_repaint_if_needed();
 }
 
 function toggle_force_red_blue_colors() {
@@ -1238,6 +1252,7 @@ function toggle_force_red_blue_colors() {
 		first_frame_played = false;
 		update_info_bar(_replay_get_value(2));
 	}
+	request_static_repaint_if_needed();
 }
 
 function update_player_vision_buttons() {
