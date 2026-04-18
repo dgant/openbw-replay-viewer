@@ -15,6 +15,18 @@ After some fixes were made to OpenBW, the need arose to be able to build the act
 
 The website consists only of static HTML/JS/CSS, so there are many options to serve the assets locally. A Dockerized version based on nginx is included and can be run through `./serve.sh`.
 
+On Windows, you can also run the bundled background static server without keeping a console open:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-local-server.ps1
+```
+
+To stop it later:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\stop-local-server.ps1
+```
+
 ### Building OpenBW
 
 The OpenBW part of the website needs to be built using emscripten. A Dockerized build script is included and can be invoked through `./build_openbw.sh` in the project root. It will run the emscripten build script in the Docker container and export the `openbw.js` and `openbw.wasm` files to the project root when it's done.
