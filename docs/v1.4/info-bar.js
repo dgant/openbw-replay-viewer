@@ -67,6 +67,9 @@ let exportState = null;
 let scrubPreviewFrame = null;
 let isDraggingVolumeSlider = false;
 let isSyncingOverallVolumeSlider = false;
+let activeAudioSliderKey = null;
+let audioSliderReleaseTimer = null;
+let audioSliderInputSeen = {};
 let lastSliderPointerPageX = 0;
 let lastSliderPointerPageY = 0;
 let lastSliderPointerClientX = 0;
@@ -401,13 +404,36 @@ function reset_audio_settings_to_defaults() {
 	apply_overall_volume_state(0.5, false);
 }
 
+function begin_audio_slider_change(key) {
+	activeAudioSliderKey = key;
+	audioSliderInputSeen[key] = false;
+	if (audioSliderReleaseTimer) {
+		clearTimeout(audioSliderReleaseTimer);
+		audioSliderReleaseTimer = null;
+	}
+}
+
+function finish_audio_slider_change(key) {
+	if (audioSliderReleaseTimer) {
+		clearTimeout(audioSliderReleaseTimer);
+	}
+	audioSliderReleaseTimer = setTimeout(function() {
+		if (activeAudioSliderKey === key) {
+			activeAudioSliderKey = null;
+		}
+		audioSliderInputSeen[key] = false;
+		populate_audio_settings_form();
+		audioSliderReleaseTimer = null;
+	}, 50);
+}
+
 function populate_audio_settings_form(skipAudioSliderKey) {
 	['overall', 'combat', 'acknowledgements', 'music'].forEach(function(key) {
 		var state = current_audio_setting_state(key);
 		$('#audio-' + key + '-toggle').toggleClass('rv-rc-sound', state.enabled);
 		$('#audio-' + key + '-toggle').toggleClass('rv-rc-muted', !state.enabled);
 		$('#audio-' + key + '-toggle').attr('aria-pressed', state.enabled ? 'true' : 'false');
-		if (key !== skipAudioSliderKey) {
+		if (key !== skipAudioSliderKey && key !== activeAudioSliderKey) {
 			$('#audio-' + key + '-slider').val(Math.round(state.level * 100));
 		}
 		$('#audio-' + key + '-value').text(Math.round(state.level * 100) + '%');
@@ -842,8 +868,21 @@ jQuery(document).ready( function($) {
 		$('#audio-' + key + '-toggle').on('click', function() {
 			set_audio_setting_enabled(key, !current_audio_setting_state(key).enabled);
 		});
-		$('#audio-' + key + '-slider').on('input change', function() {
+		$('#audio-' + key + '-slider').on('pointerdown mousedown touchstart', function() {
+			begin_audio_slider_change(key);
+		});
+		$('#audio-' + key + '-slider').on('input', function() {
+			audioSliderInputSeen[key] = true;
 			set_audio_setting_level(key, this.value);
+		});
+		$('#audio-' + key + '-slider').on('change', function() {
+			if (!audioSliderInputSeen[key]) {
+				set_audio_setting_level(key, this.value);
+			}
+			finish_audio_slider_change(key);
+		});
+		$('#audio-' + key + '-slider').on('pointerup mouseup touchend blur', function() {
+			finish_audio_slider_change(key);
 		});
 	});
 	$('#playlist-prev').on('click', function() {
