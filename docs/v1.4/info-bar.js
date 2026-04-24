@@ -71,7 +71,9 @@ let activeAudioSliderKey = null;
 let audioSliderReleaseTimer = null;
 let audioSliderInputSeen = {};
 let audioSliderLastInputValue = {};
+let audioSliderIgnoreNativeInputUntil = {};
 let isPointerChangingAudioSlider = false;
+let activeAudioSliderDrag = null;
 let lastSliderPointerPageX = 0;
 let lastSliderPointerPageY = 0;
 let lastSliderPointerClientX = 0;
@@ -429,6 +431,7 @@ function mark_audio_slider_input(key, value) {
 
 function finish_audio_slider_change(key) {
 	isPointerChangingAudioSlider = false;
+	audioSliderIgnoreNativeInputUntil[key] = performance.now() + 1500;
 	if (audioSliderReleaseTimer) {
 		clearTimeout(audioSliderReleaseTimer);
 	}
@@ -438,6 +441,7 @@ function finish_audio_slider_change(key) {
 		}
 		audioSliderInputSeen[key] = false;
 		delete audioSliderLastInputValue[key];
+		delete audioSliderIgnoreNativeInputUntil[key];
 		populate_audio_settings_form();
 		audioSliderReleaseTimer = null;
 	}, 1500);
@@ -447,6 +451,74 @@ function maybe_finish_audio_slider_change_after_blur(key) {
 	if (!isPointerChangingAudioSlider) {
 		finish_audio_slider_change(key);
 	}
+}
+
+function audio_slider_value_from_event(slider, event) {
+	var originalEvent = event.originalEvent || event;
+	var clientX = Number.isFinite(originalEvent.clientX) ? originalEvent.clientX : null;
+	if (clientX === null && originalEvent.touches && originalEvent.touches.length) {
+		clientX = originalEvent.touches[0].clientX;
+	}
+	if (clientX === null && originalEvent.changedTouches && originalEvent.changedTouches.length) {
+		clientX = originalEvent.changedTouches[0].clientX;
+	}
+	var rect = slider.getBoundingClientRect();
+	var min = parseFloat(slider.min || '0');
+	var max = parseFloat(slider.max || '100');
+	var step = parseFloat(slider.step || '1') || 1;
+	var fraction = rect.width > 0 && clientX !== null ? (clientX - rect.left) / rect.width : 0;
+	fraction = Math.max(0, Math.min(1, fraction));
+	var rawValue = min + fraction * (max - min);
+	return String(Math.round(rawValue / step) * step);
+}
+
+function apply_audio_slider_pointer_value(key, slider, event) {
+	var value = audio_slider_value_from_event(slider, event);
+	slider.value = value;
+	mark_audio_slider_input(key, value);
+	audioSliderIgnoreNativeInputUntil[key] = performance.now() + 1500;
+	set_audio_setting_level(key, value);
+}
+
+function should_ignore_native_audio_slider_input(key, slider) {
+	return (
+		Object.prototype.hasOwnProperty.call(audioSliderLastInputValue, key) &&
+		String(slider.value) !== audioSliderLastInputValue[key] &&
+		performance.now() < (audioSliderIgnoreNativeInputUntil[key] || 0)
+	);
+}
+
+function stop_audio_slider_drag() {
+	if (!activeAudioSliderDrag) return;
+	var key = activeAudioSliderDrag.key;
+	activeAudioSliderDrag = null;
+	$(document).off('.settingsAudioSlider');
+	finish_audio_slider_change(key);
+}
+
+function start_audio_slider_drag(key, slider, event) {
+	var originalEvent = event.originalEvent || event;
+	if (activeAudioSliderDrag) {
+		stop_audio_slider_drag();
+	}
+	activeAudioSliderDrag = { key: key, slider: slider };
+	begin_audio_slider_change(key);
+	apply_audio_slider_pointer_value(key, slider, event);
+	if (originalEvent && typeof originalEvent.preventDefault === 'function') {
+		originalEvent.preventDefault();
+	}
+	$(document)
+		.on('pointermove.settingsAudioSlider mousemove.settingsAudioSlider touchmove.settingsAudioSlider', function(moveEvent) {
+			if (!activeAudioSliderDrag) return;
+			apply_audio_slider_pointer_value(activeAudioSliderDrag.key, activeAudioSliderDrag.slider, moveEvent);
+			moveEvent.preventDefault();
+		})
+		.on('pointerup.settingsAudioSlider mouseup.settingsAudioSlider touchend.settingsAudioSlider touchcancel.settingsAudioSlider', function(upEvent) {
+			if (activeAudioSliderDrag) {
+				apply_audio_slider_pointer_value(activeAudioSliderDrag.key, activeAudioSliderDrag.slider, upEvent);
+			}
+			stop_audio_slider_drag();
+		});
 }
 
 function populate_audio_settings_form(skipAudioSliderKey) {
@@ -891,9 +963,14 @@ jQuery(document).ready( function($) {
 			set_audio_setting_enabled(key, !current_audio_setting_state(key).enabled);
 		});
 		$('#audio-' + key + '-slider').on('pointerdown mousedown touchstart', function() {
-			begin_audio_slider_change(key);
+			start_audio_slider_drag(key, this, arguments[0]);
 		});
 		$('#audio-' + key + '-slider').on('input', function() {
+			var originalEvent = arguments[0].originalEvent || arguments[0];
+			if (originalEvent && originalEvent.isTrusted !== false && should_ignore_native_audio_slider_input(key, this)) {
+				this.value = audioSliderLastInputValue[key];
+				return;
+			}
 			mark_audio_slider_input(key, this.value);
 			set_audio_setting_level(key, this.value);
 		});
@@ -906,9 +983,6 @@ jQuery(document).ready( function($) {
 			) {
 				this.value = audioSliderLastInputValue[key];
 			}
-			finish_audio_slider_change(key);
-		});
-		$('#audio-' + key + '-slider').on('pointerup mouseup touchend', function() {
 			finish_audio_slider_change(key);
 		});
 		$('#audio-' + key + '-slider').on('blur', function() {
