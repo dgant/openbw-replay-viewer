@@ -70,6 +70,8 @@ let isSyncingOverallVolumeSlider = false;
 let activeAudioSliderKey = null;
 let audioSliderReleaseTimer = null;
 let audioSliderInputSeen = {};
+let audioSliderLastInputValue = {};
+let isPointerChangingAudioSlider = false;
 let lastSliderPointerPageX = 0;
 let lastSliderPointerPageY = 0;
 let lastSliderPointerClientX = 0;
@@ -407,6 +409,18 @@ function reset_audio_settings_to_defaults() {
 function begin_audio_slider_change(key) {
 	activeAudioSliderKey = key;
 	audioSliderInputSeen[key] = false;
+	delete audioSliderLastInputValue[key];
+	isPointerChangingAudioSlider = true;
+	if (audioSliderReleaseTimer) {
+		clearTimeout(audioSliderReleaseTimer);
+		audioSliderReleaseTimer = null;
+	}
+}
+
+function mark_audio_slider_input(key, value) {
+	activeAudioSliderKey = key;
+	audioSliderInputSeen[key] = true;
+	audioSliderLastInputValue[key] = String(value);
 	if (audioSliderReleaseTimer) {
 		clearTimeout(audioSliderReleaseTimer);
 		audioSliderReleaseTimer = null;
@@ -414,6 +428,7 @@ function begin_audio_slider_change(key) {
 }
 
 function finish_audio_slider_change(key) {
+	isPointerChangingAudioSlider = false;
 	if (audioSliderReleaseTimer) {
 		clearTimeout(audioSliderReleaseTimer);
 	}
@@ -422,9 +437,16 @@ function finish_audio_slider_change(key) {
 			activeAudioSliderKey = null;
 		}
 		audioSliderInputSeen[key] = false;
+		delete audioSliderLastInputValue[key];
 		populate_audio_settings_form();
 		audioSliderReleaseTimer = null;
-	}, 50);
+	}, 1500);
+}
+
+function maybe_finish_audio_slider_change_after_blur(key) {
+	if (!isPointerChangingAudioSlider) {
+		finish_audio_slider_change(key);
+	}
 }
 
 function populate_audio_settings_form(skipAudioSliderKey) {
@@ -872,17 +894,25 @@ jQuery(document).ready( function($) {
 			begin_audio_slider_change(key);
 		});
 		$('#audio-' + key + '-slider').on('input', function() {
-			audioSliderInputSeen[key] = true;
+			mark_audio_slider_input(key, this.value);
 			set_audio_setting_level(key, this.value);
 		});
 		$('#audio-' + key + '-slider').on('change', function() {
 			if (!audioSliderInputSeen[key]) {
 				set_audio_setting_level(key, this.value);
+			} else if (
+				Object.prototype.hasOwnProperty.call(audioSliderLastInputValue, key) &&
+				String(this.value) !== audioSliderLastInputValue[key]
+			) {
+				this.value = audioSliderLastInputValue[key];
 			}
 			finish_audio_slider_change(key);
 		});
-		$('#audio-' + key + '-slider').on('pointerup mouseup touchend blur', function() {
+		$('#audio-' + key + '-slider').on('pointerup mouseup touchend', function() {
 			finish_audio_slider_change(key);
+		});
+		$('#audio-' + key + '-slider').on('blur', function() {
+			maybe_finish_audio_slider_change_after_blur(key);
 		});
 	});
 	$('#playlist-prev').on('click', function() {
