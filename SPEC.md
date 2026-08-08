@@ -21,13 +21,19 @@ StarCraft: Brood War 1.16.1 replay files.
 - Local replay bytes are read through the explicitly allow-listed
   `filesystem.readBinaryFile` native API.
 - Paths containing spaces, `#`, and other URL-significant characters must work.
+- Audio, video-clip, zoom, toggle, and most-recent-settings-tab preferences must
+  survive application restarts and release-directory replacement.
+- Persistent settings must live in the operating system's application-data
+  directory, not beside the executable.
+- The desktop persistence layer must not change website storage behavior.
 - Launch and replay-loading failures must replace the progress text with a
   human-readable error instead of hanging silently.
 - The Windows executable and `resources.neu` are distributed together.
 
 ## Verification
 
-- Launcher URL behavior is covered by focused Node tests.
+- Launcher URL and desktop settings persistence behavior are covered by focused
+  Node tests.
 - A release build must complete without new errors.
 - A packaged Windows build must open an associated replay, render the game and
   HUD, advance playback, and leave the Neutralino log free of errors.

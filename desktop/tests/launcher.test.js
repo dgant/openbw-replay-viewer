@@ -11,7 +11,13 @@ const launcherSource = fs.readFileSync(
 
 async function runLauncher(args) {
   let replacedUrl = "";
+  let hydrated = false;
   const context = {
+    DesktopSettingsPersistence: {
+      async hydrate() {
+        hydrated = true;
+      },
+    },
     document: {
       getElementById() {
         return { set textContent(_value) {} };
@@ -31,22 +37,26 @@ async function runLauncher(args) {
   };
 
   vm.runInNewContext(launcherSource, context);
-  await Promise.resolve();
-  return replacedUrl;
+  await new Promise((resolve) => setImmediate(resolve));
+  return { hydrated, replacedUrl };
 }
 
 test("opens the bundled viewer through Neutralino's resource server", async () => {
-  assert.equal(
-    await runLauncher(["replay-viewer-desktop.exe"]),
-    "/viewer/index.html",
-  );
+  const result = await runLauncher(["replay-viewer-desktop.exe"]);
+
+  assert.equal(result.hydrated, true);
+  assert.equal(result.replacedUrl, "/viewer/index.html?desktop=1");
 });
 
 test("passes an associated replay as a local filesystem path", async () => {
   const replayPath = "E:\\Replays\\A match #1.rep";
 
+  const result = await runLauncher(["replay-viewer-desktop.exe", replayPath]);
+
+  assert.equal(result.hydrated, true);
   assert.equal(
-    await runLauncher(["replay-viewer-desktop.exe", replayPath]),
-    "/viewer/index.html?desktopReplayPath=" + encodeURIComponent(replayPath),
+    result.replacedUrl,
+    "/viewer/index.html?desktop=1&desktopReplayPath=" +
+      encodeURIComponent(replayPath),
   );
 });

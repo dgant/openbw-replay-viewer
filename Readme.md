@@ -59,8 +59,9 @@ On GitHub Pages, the viewer is configured to fetch MPQs from `/mpqs/<file>` on t
 
 The Neutralino-based standalone application lives in `desktop/`. It bundles
 this repository's `docs/` viewer, accepts a `.rep` path as a command-line
-argument, and reads associated replay files through Neutralino's filesystem
-API.
+argument, reads associated replay files through Neutralino's filesystem API,
+and persists viewer settings in the operating system's application-data
+directory.
 
 To test and build it:
 

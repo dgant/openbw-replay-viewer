@@ -17,17 +17,18 @@
   }
 
   function viewerLaunchUrl() {
-    const viewerIndex = "/viewer/index.html";
+    const viewerIndex = "/viewer/index.html?desktop=1";
     const replayArg = findReplayArgument();
     if (!replayArg) return viewerIndex;
 
-    return viewerIndex + "?desktopReplayPath=" + encodeURIComponent(replayArg);
+    return viewerIndex + "&desktopReplayPath=" + encodeURIComponent(replayArg);
   }
 
   async function launchViewer() {
     setStatus("Opening bundled viewer…");
     try {
       await Neutralino.init();
+      await DesktopSettingsPersistence.hydrate();
       window.location.replace(viewerLaunchUrl());
     } catch (error) {
       const message = error && error.message ? error.message : String(error);

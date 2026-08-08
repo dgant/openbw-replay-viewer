@@ -6,9 +6,16 @@
   "url": "/index.html",
   "enableServer": true,
   "enableNativeAPI": true,
+  "dataLocation": "system",
+  "storageLocation": "system",
   "nativeAllowList": [
     "app.*",
+    "filesystem.createDirectory",
+    "filesystem.getStats",
     "filesystem.readBinaryFile",
+    "storage.getData",
+    "storage.getKeys",
+    "storage.setData",
     "window.*"
   ],
   "modes": {
@@ -18,12 +25,14 @@
       "height": 960,
       "minWidth": 960,
       "minHeight": 640,
+      "exitProcessOnClose": false,
       "icon": "/www/icon.png"
     }
   },
   "cli": {
     "binaryName": "replay-viewer-desktop",
     "resourcesPath": "/www/",
+    "resourcesExclude": ".*\\.rep$",
     "extensionsPath": "/extensions/",
     "clientLibrary": "/www/neutralino.js",
     "binaryVersion": "6.5.0",

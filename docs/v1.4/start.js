@@ -1247,7 +1247,7 @@ function resize_canvas(canvas) {
 	let effectiveZoomLevel = exportRenderSize ? zoomLevel : find_safe_zoom_level(renderWidth, renderHeight, zoomLevel);
 	if (effectiveZoomLevel !== zoomLevel && !exportRenderSize) {
 		zoomLevel = effectiveZoomLevel;
-		localStorage.zoomLevel = '' + zoomLevel;
+		localStorage.setItem('zoomLevel', '' + zoomLevel);
 		if (typeof update_zoom_buttons === "function") update_zoom_buttons();
 	}
 	if (currentSize.width === liveSize.width && currentSize.height === liveSize.height && currentSize.zoomLevel === effectiveZoomLevel && currentSize.renderWidth === renderWidth && currentSize.renderHeight === renderHeight) {
