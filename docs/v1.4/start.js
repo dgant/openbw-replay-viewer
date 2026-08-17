@@ -1847,6 +1847,12 @@ function start_replay(buffer, length) {
 	if (typeof Module !== "undefined" && typeof Module.set_primary_perspective_player === "function") {
 		Module.set_primary_perspective_player(players.length ? players[0] : -1);
 	}
+	update_info_bar(_replay_get_value(2));
+	update_info_tab();
+	last_update_frame = _replay_get_value(2);
+	if (typeof Module._ui_force_static_redraw === "function") {
+		_ui_force_static_redraw();
+	}
 	initialize_music_for_current_replay();
 }
 
