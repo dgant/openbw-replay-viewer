@@ -37,3 +37,6 @@ StarCraft: Brood War 1.16.1 replay files.
 - A release build must complete without new errors.
 - A packaged Windows build must open an associated replay, render the game and
   HUD, advance playback, and leave the Neutralino log free of errors.
+
+- The default OpenBW build must also package the desktop viewer from the same local web assets and verify their equality.
+- Windows file associations use the maintained `desktop/dist/replay-viewer-desktop` output.
