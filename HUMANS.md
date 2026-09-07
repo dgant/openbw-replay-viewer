@@ -50,3 +50,13 @@ On Windows, run `desktop/scripts/register-file-association.ps1` after the first
 build. It registers the executable in `desktop/dist/replay-viewer-desktop/`,
 which subsequent builds update in place. Existing user defaults for other apps
 may require choosing this viewer in Windows Default Apps.
+
+To check Windows registration after running the registration script:
+
+```powershell
+./desktop/tests/file-association.test.ps1
+```
+
+This checks both the legacy and current viewer handlers and the effective user
+choice. For end-to-end validation, open a `.rep` through Windows ShellExecute
+and verify that the maintained executable loads the replay.

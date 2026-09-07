@@ -21,3 +21,5 @@
   in the application and receives only repository-controlled build paths, so
   install-time audit noise is disabled in `desktop/.npmrc` until Neutralino
   updates that dependency chain.
+
+- Windows may select either `rep_auto_file` or the executable's Applications ProgID for `.rep` through protected UserChoice. Repair both viewer registrations when relocating a build, notify Explorer, and test ShellExecute on a replay; launching the executable directly does not verify a file association.
