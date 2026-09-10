@@ -34,6 +34,10 @@ Desktop settings are stored outside the release directory under the operating
 system's application-data directory for `io.github.dgant.replayviewer`, so
 replacing or moving the application does not reset them.
 
+The app intentionally does not restore Neutralino's saved window coordinates.
+It restores, centers, and shows the window on every launch so a prior minimized
+launch or disconnected monitor cannot leave the viewer off-screen.
+
 To verify `.rep` launching end to end, associate `.rep` files with
 `replay-viewer-desktop-win_x64.exe`, double-click a known replay, and confirm
 the game viewport replaces the launcher screen and playback advances.

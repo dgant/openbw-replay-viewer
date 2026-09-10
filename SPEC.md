@@ -17,6 +17,10 @@ StarCraft: Brood War 1.16.1 replay files.
 - The desktop application bundles the same `docs/` viewer used by the website.
 - Starting the application without a replay opens the viewer home screen.
 - Starting it with a `.rep` command-line argument opens that replay.
+- Every launch restores the primary window from a minimized state, centers it
+  on the current display, and makes it visible.
+- Framework window-state restoration is disabled so minimized sentinel or
+  disconnected-display coordinates cannot make later launches inaccessible.
 - The bundled viewer remains on Neutralino's local HTTP resource origin.
 - Local replay bytes are read through the explicitly allow-listed
   `filesystem.readBinaryFile` native API.

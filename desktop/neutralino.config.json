@@ -25,7 +25,9 @@
       "height": 960,
       "minWidth": 960,
       "minHeight": 640,
+      "center": true,
       "exitProcessOnClose": false,
+      "useSavedState": false,
       "icon": "/www/icon.png"
     }
   },
