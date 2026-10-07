@@ -9,6 +9,8 @@ StarCraft: Brood War 1.16.1 replay files.
 
 - The static application is served from `docs/`.
 - Users can browse for or drag replay files into the viewer.
+- While a replay is loaded, users can download its original `.rep` bytes and
+  filename from the top-right Download button.
 - A `rep` URL parameter loads a remotely fetchable replay.
 - Game data files are loaded from the configured hosted MPQ source.
 

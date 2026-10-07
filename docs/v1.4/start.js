@@ -1020,6 +1020,7 @@ function read_replay_entry(entry, canvas) {
 		reader.onloadend = function(e) {
 			if (!e.target.error && e.target.readyState != FileReader.DONE) throw "read failed with no error!?";
 			if (e.target.error) throw "read failed: " + e.target.error;
+			ReplayDownload.setSource(e.target.result, entry.displayName || entry.label || entry.file.name);
 			var arr = new Int8Array(e.target.result);
 			if (main_has_been_called) {
 				var buf = allocate_replay_buffer(arr);
@@ -1709,7 +1710,7 @@ function load_replay_url(url) {
 	    req.onreadystatechange = function() {
 	    	
 	        if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
-	        	
+		        ReplayDownload.setSource(req.response, ReplayDownload.filenameFromUrl(url));
 		        var arr = new Int8Array(req.response);
 		        var buf = allocate_replay_buffer(arr);
 		        start_replay(buf, arr.length);
@@ -1739,6 +1740,7 @@ function load_desktop_replay_path(path) {
 	Neutralino.init();
 	Neutralino.filesystem.readBinaryFile(path)
 		.then(function(buffer) {
+			ReplayDownload.setSource(buffer, ReplayDownload.filenameFromPath(path));
 			var arr = new Int8Array(buffer);
 			var buf = allocate_replay_buffer(arr);
 			start_replay(buf, arr.length);

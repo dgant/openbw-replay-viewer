@@ -21,6 +21,9 @@ Run its focused regression tests:
 npm test
 ```
 
+The regression suite covers the top-right replay-download behavior and control
+layout as well as the desktop launcher and settings bridge.
+
 Build all desktop packages:
 
 ```bash
