@@ -12,6 +12,9 @@ StarCraft: Brood War 1.16.1 replay files.
 - While a replay is loaded, users can download its original `.rep` bytes and
   filename from the top-right Download button.
 - A `rep` URL parameter loads a remotely fetchable replay.
+- Each replay opens centered on the first participant's starting location in
+  player-slot order, with map-edge clamping. This happens before playback,
+  regardless of automatic-camera preference, and respects restored zoom.
 - Game data files are loaded from the configured hosted MPQ source.
 
 ## Standalone viewer

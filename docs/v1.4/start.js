@@ -28,6 +28,8 @@ var C_CURRENT_WORKERS = 11;
 var C_CURRENT_ARMY_SIZE = 12;
 var C_RACE = 13;
 var C_APM = 14;
+var C_START_LOCATION_X = 15;
+var C_START_LOCATION_Y = 16;
 
 var C_MPQ_FILENAMES = ["StarDat.mpq", "BrooDat.mpq", "Patch_rt.mpq"];
 var C_MPQ_BASE_URL = (window.OPENBW_MPQ_BASE_URL || "https://dgant.github.io/mpqs").replace(/\/$/, "");
@@ -1754,6 +1756,14 @@ function load_desktop_replay_path(path) {
 
 var first_frame_played = false;
 
+function center_camera_on_first_player_start() {
+	if (!players.length) return;
+	_ui_set_screen_center(
+		_player_get_value(players[0], C_START_LOCATION_X),
+		_player_get_value(players[0], C_START_LOCATION_Y)
+	);
+}
+
 function start_replay(buffer, length) {
 	resume_viewer_main_loop();
 	reveal_pregame_homepage();
@@ -1790,6 +1800,12 @@ function start_replay(buffer, length) {
 		setTimeout(function() {
 			zoomLevel = zoom;
 			resize_canvas(Module.canvas);
+			// Recenter after zoom: the initial view may have been clamped at a map edge.
+			center_camera_on_first_player_start();
+			// Resizing clears the canvas even if a paused replay has stopped its loop.
+			if (typeof Module._ui_force_static_redraw === "function") {
+				_ui_force_static_redraw();
+			}
 		}, 0);
 	}
 
@@ -1852,6 +1868,7 @@ function start_replay(buffer, length) {
 	update_info_bar(_replay_get_value(2));
 	update_info_tab();
 	last_update_frame = _replay_get_value(2);
+	center_camera_on_first_player_start();
 	if (typeof Module._ui_force_static_redraw === "function") {
 		_ui_force_static_redraw();
 	}

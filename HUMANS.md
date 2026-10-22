@@ -5,6 +5,10 @@
 Serve `docs/` with a static HTTP server. The published viewer is hosted at
 https://dgant.github.io/openbw-replay-viewer/.
 
+Loading a replay centers the view on the first player's starting position,
+including when automatic camera is disabled or another replay was paused.
+Your saved zoom is preserved; the camera is clamped at map edges.
+
 ## Standalone desktop viewer
 
 The Neutralino wrapper is in `desktop/`. Install and prepare it with:
