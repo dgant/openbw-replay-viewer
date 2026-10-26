@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $desktopRoot = Split-Path -Parent $PSScriptRoot
+$config = Get-Content -LiteralPath (Join-Path $desktopRoot 'neutralino.config.json') -Raw | ConvertFrom-Json
+$displayName = $config.applicationName
 $releaseDir = Join-Path $desktopRoot 'dist/replay-viewer-desktop'
 $executable = Join-Path $releaseDir 'replay-viewer-desktop-win_x64.exe'
 foreach ($file in @($executable, (Join-Path $releaseDir 'resources.neu'))) {
@@ -17,6 +19,7 @@ foreach ($viewerProgId in @($progId, 'rep_auto_file')) {
     $commandKey = "$classes\$viewerProgId\shell\open\command"
     New-Item -Path $commandKey -Force | Out-Null
     Set-Item -LiteralPath $commandKey -Value ('"{0}" "%1"' -f $executable)
+    New-ItemProperty -Path "$classes\$viewerProgId" -Name 'FriendlyAppName' -Value $displayName -PropertyType String -Force | Out-Null
 }
 New-Item -Path "$classes\.rep" -Force | Out-Null
 Set-Item -LiteralPath "$classes\.rep" -Value $progId

@@ -27,3 +27,8 @@
   Windows' minimized sentinel coordinates (`32767, -32768`) as a normal window
   position. Disable saved window state and explicitly unminimize, center, and
   show this viewer at startup so later launches cannot remain off-screen.
+- Neutralino's window title does not brand its Windows executable. CLI 11.7.2
+  reads top-level `description` for FileDescription and `applicationName` for
+  ProductName; without them Task Manager shows the generic framework name.
+  Verify the built PE resources, not only the configuration. Register
+  FriendlyAppName for both owned replay handlers to label Windows Open with.

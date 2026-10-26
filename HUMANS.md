@@ -37,6 +37,17 @@ npm run build
 The Windows executable and its required `resources.neu` file are emitted under
 `desktop/dist/replay-viewer-desktop/`. Keep those two files together.
 
+The application appears as **StarCraft Replay Viewer** in Task Manager, window
+titles, executable properties, and Windows Open with (after registration).
+The executable filename remains `replay-viewer-desktop-win_x64.exe` for
+compatibility. Close and reopen a running viewer after updating its build.
+Every desktop build verifies both the bundled web assets and the Windows
+executable's description/product name. To check the metadata separately:
+
+```bash
+node desktop/scripts/verify-windows-metadata.js
+```
+
 Desktop settings are stored outside the release directory under the operating
 system's application-data directory for `io.github.dgant.replayviewer`, so
 replacing or moving the application does not reset them.
@@ -68,6 +79,6 @@ To check Windows registration after running the registration script:
 ./desktop/tests/file-association.test.ps1
 ```
 
-This checks both the legacy and current viewer handlers and the effective user
-choice. For end-to-end validation, open a `.rep` through Windows ShellExecute
+This checks both handlers' display names, the legacy and current viewer
+commands, and the effective user choice. For end-to-end validation, open a `.rep` through Windows ShellExecute
 and verify that the maintained executable loads the replay.

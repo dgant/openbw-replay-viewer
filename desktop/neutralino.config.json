@@ -1,5 +1,7 @@
 {
   "applicationId": "io.github.dgant.replayviewer",
+  "applicationName": "StarCraft Replay Viewer",
+  "description": "StarCraft Replay Viewer",
   "version": "0.1.0",
   "defaultMode": "window",
   "documentRoot": "/www/",

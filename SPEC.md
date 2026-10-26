@@ -19,6 +19,10 @@ StarCraft: Brood War 1.16.1 replay files.
 
 ## Standalone viewer
 
+- User-facing application names, including the window title, Windows executable
+  description/product name, and Open with label, are `StarCraft Replay Viewer`.
+  Keep the application ID and executable path stable to preserve settings and
+  existing file associations. Release builds verify the executable metadata.
 - The desktop application bundles the same `docs/` viewer used by the website.
 - Starting the application without a replay opens the viewer home screen.
 - Starting it with a `.rep` command-line argument opens that replay.
