@@ -1,11 +1,4 @@
-
-var createClassicReplayEngine = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
-  return (
-function(createClassicReplayEngine) {
-  createClassicReplayEngine = createClassicReplayEngine || {};
-
-var Module = typeof createClassicReplayEngine !== "undefined" ? createClassicReplayEngine : {};
+var Module = typeof Module !== "undefined" ? Module : {};
 
 var moduleOverrides = {};
 
@@ -80,6 +73,9 @@ if (ENVIRONMENT_IS_NODE) {
   thisProgram = process["argv"][1].replace(/\\/g, "/");
  }
  arguments_ = process["argv"].slice(2);
+ if (typeof module !== "undefined") {
+  module["exports"] = Module;
+ }
  process["on"]("uncaughtException", function(ex) {
   if (!(ex instanceof ExitStatus)) {
    throw ex;
@@ -127,9 +123,6 @@ if (ENVIRONMENT_IS_NODE) {
   scriptDirectory = self.location.href;
  } else if (document.currentScript) {
   scriptDirectory = document.currentScript.src;
- }
- if (_scriptDir) {
-  scriptDirectory = _scriptDir;
  }
  if (scriptDirectory.indexOf("blob:") !== 0) {
   scriptDirectory = scriptDirectory.substr(0, scriptDirectory.lastIndexOf("/") + 1);
@@ -519,7 +512,7 @@ function updateGlobalBufferAndViews(buf) {
  Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
 }
 
-var DYNAMIC_BASE = 5419952, DYNAMICTOP_PTR = 176880;
+var DYNAMIC_BASE = 5419920, DYNAMICTOP_PTR = 176848;
 
 var INITIAL_TOTAL_MEMORY = Module["TOTAL_MEMORY"] || 201326592;
 
@@ -11384,24 +11377,9 @@ function invoke_jiji(index, a1, a2, a3, a4) {
 
 Module["asm"] = asm;
 
-Module["UTF8ToString"] = UTF8ToString;
-
 Module["callMain"] = callMain;
 
 var calledRun;
-
-Module["then"] = function(func) {
- if (calledRun) {
-  func(Module);
- } else {
-  var old = Module["onRuntimeInitialized"];
-  Module["onRuntimeInitialized"] = function() {
-   if (old) old();
-   func(Module);
-  };
- }
- return Module;
-};
 
 function ExitStatus(status) {
  this.name = "ExitStatus";
@@ -11500,21 +11478,3 @@ if (Module["noInitialRun"]) shouldRunNow = false;
 noExitRuntime = true;
 
 run();
-
-Module.disposeReplayEngine = function() {
- Browser.mainLoop.pause();
- if (typeof JSEvents !== "undefined") JSEvents.removeAllEventListeners();
- if (typeof SDL !== "undefined" && SDL.quit) SDL.quit();
-};
-
-
-  return createClassicReplayEngine
-}
-);
-})();
-if (typeof exports === 'object' && typeof module === 'object')
-      module.exports = createClassicReplayEngine;
-    else if (typeof define === 'function' && define['amd'])
-      define([], function() { return createClassicReplayEngine; });
-    else if (typeof exports === 'object')
-      exports["createClassicReplayEngine"] = createClassicReplayEngine;
