@@ -1710,7 +1710,8 @@ function load_replay_url(url) {
 	    req.onreadystatechange = function() {
 	    	
 	        if (req.readyState == XMLHttpRequest.DONE && req.status == 200) {
-		        ReplayDownload.setSource(req.response, ReplayDownload.filenameFromUrl(url));
+		        var logUrl = new URL(req.responseURL).origin === location.origin ? req.getResponseHeader('X-Game-Log') : null;
+		        ReplayDownload.setSource(req.response, ReplayDownload.filenameFromUrl(url), logUrl);
 		        var arr = new Int8Array(req.response);
 		        load_replay_bytes(arr);
 	        } else if (req.readyState == XMLHttpRequest.DONE) {

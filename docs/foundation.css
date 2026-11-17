@@ -7768,6 +7768,7 @@ body.pregame-active #info-dock .info-dock-header {
   align-items: start; }
 
 #viewport-export .rv-rc-copy-link,
+#viewport-export .rv-rc-game-log,
 #viewport-export .rv-rc-download-replay,
 #viewport-export .rv-rc-export,
 #viewport-export .rv-rc-open-replay,
@@ -7799,6 +7800,14 @@ body.pregame-active #info-dock .info-dock-header {
     font-family: 'FontAwesome';
     font-size: 18px;
     line-height: 1; }
+  #viewport-export .rv-rc-game-log[hidden] { display: none; }
+  #viewport-export .rv-rc-game-log::before {
+    content: "\f0f6";
+    font-family: 'FontAwesome';
+    font-size: 18px; }
+  #viewport-export:has(.rv-rc-game-log[href]) { grid-template-columns: repeat(3, 40px); }
+  #viewport-export:has(.rv-rc-game-log[href]) #rv-rc-download-replay { grid-column: 3; }
+  #viewport-export #rv-rc-game-log { grid-column: 2; grid-row: 1; }
   #viewport-export .rv-rc-export-settings::before {
     content: "\f013";
     font-family: 'FontAwesome';

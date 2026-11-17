@@ -14,6 +14,10 @@ powershell -ExecutionPolicy Bypass -File .\stop-local-server.ps1
 
 The browser and desktop viewer fetch game data from `https://dgant.github.io/mpqs`.
 
+For a PurpleBench replay with a retained game log, click the document icon
+immediately left of Download to open the log in a new tab. The viewer reads the
+log link from the replay response and updates it when a different replay loads.
+
 Loading a replay centers the view on the first player's starting position,
 including when automatic camera is disabled or another replay was paused.
 Your saved zoom is preserved; the camera is clamped at map edges.

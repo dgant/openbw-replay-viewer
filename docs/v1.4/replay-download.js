@@ -16,11 +16,21 @@
 		}
 	}
 
-	function set_source(data, filename) {
+	function set_source(data, filename, logUrl) {
 		currentReplay = data == null ? null : {
 			data: data,
 			filename: filename_from_path(filename)
 		};
+		var link = global.document.getElementById('rv-rc-game-log');
+		link.removeAttribute('href');
+		link.hidden = true;
+		if (currentReplay && logUrl) {
+			var url = new global.URL(logUrl, global.location.href);
+			if (url.origin === global.location.origin && (url.protocol === 'http:' || url.protocol === 'https:')) {
+				link.href = url.href;
+				link.hidden = false;
+			}
+		}
 	}
 
 	function download_current() {

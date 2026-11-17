@@ -25,6 +25,7 @@ test("downloads the current replay with its original filename", () => {
       },
     },
     document: {
+      getElementById() { return { removeAttribute() {} }; },
       body: {
         appendChild(link) {
           links.push(link);
@@ -57,6 +58,21 @@ test("downloads the current replay with its original filename", () => {
   assert.equal(links[0].href, "blob:current-replay");
   assert.equal(links[0].clickCalled, true);
   assert.deepEqual(revokedUrls, ["blob:current-replay"]);
+});
+
+test("tracks the log supplied for the current replay and clears it on file changes", () => {
+  const link = { removeAttribute() { delete this.href; } };
+  const context = { URL, location: new URL("http://localhost/viewer/index.html"),
+    document: { getElementById() { return link; } } };
+  context.window = context;
+  vm.runInNewContext(downloadSource, context);
+  const bytes = new Uint8Array([1]);
+  context.ReplayDownload.setSource(bytes, "first.rep", "/api/game-log?game=first");
+  assert.equal(link.href, "http://localhost/api/game-log?game=first");
+  assert.equal(link.hidden, false);
+  context.ReplayDownload.setSource(bytes, "local.rep");
+  assert.equal(link.href, undefined);
+  assert.equal(link.hidden, true);
 });
 
 test("places Open and Download on top and Settings below Snip", () => {
