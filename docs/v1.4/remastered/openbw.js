@@ -519,7 +519,7 @@ function updateGlobalBufferAndViews(buf) {
  Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
 }
 
-var DYNAMIC_BASE = 5423104, DYNAMICTOP_PTR = 180016;
+var DYNAMIC_BASE = 5433168, DYNAMICTOP_PTR = 190080;
 
 var INITIAL_TOTAL_MEMORY = Module["TOTAL_MEMORY"] || 201326592;
 
@@ -781,8 +781,18 @@ var tempI64;
 
 var ASM_CONSTS = [ function($0) {
  js_fatal_error($0);
+}, function() {
+ return !!Module.replayChat;
+}, function() {
+ Module.replayChat.clear();
+}, function($0, $1, $2, $3) {
+ Module.replayChat.add(HEAPU8.subarray($0, $1), HEAPU8.subarray($2, $3));
+}, function() {
+ Module.replayChat.draw();
 }, function($0) {
  Module.replayError = UTF8ToString($0);
+}, function($0) {
+ if (Module.replayChat) Module.replayChat.setPalette(HEAPU8.slice($0, $0 + 576));
 }, function() {
  js_pre_main_loop();
 }, function($0) {
@@ -1305,7 +1315,7 @@ function ___cxa_find_matching_catch() {
  }
  var typeArray = Array.prototype.slice.call(arguments);
  var pointer = ___cxa_is_pointer_type(throwntype);
- var buffer = 180208;
+ var buffer = 190272;
  HEAP32[buffer >> 2] = thrown;
  thrown = buffer;
  for (var i = 0; i < typeArray.length; i++) {
@@ -10743,22 +10753,22 @@ var asmLibraryArg = {
  "b": ___cxa_find_matching_catch_2,
  "j": ___cxa_find_matching_catch_3,
  "o": ___cxa_free_exception,
- "va": ___cxa_rethrow,
+ "wa": ___cxa_rethrow,
  "w": ___cxa_throw,
  "He": ___cxa_uncaught_exceptions,
  "Da": ___lock,
  "Ee": ___map_file,
  "e": ___resumeException,
- "V": ___syscall221,
+ "W": ___syscall221,
  "Ne": ___syscall5,
  "Le": ___syscall54,
  "De": ___syscall91,
  "P": ___unlock,
  "ze": __embind_register_bool,
- "S": __embind_register_class,
+ "T": __embind_register_class,
  "Xb": __embind_register_class_constructor,
  "x": __embind_register_class_function,
- "R": __embind_register_class_property,
+ "S": __embind_register_class_property,
  "xe": __embind_register_emval,
  "xa": __embind_register_float,
  "A": __embind_register_function,
@@ -10773,9 +10783,9 @@ var asmLibraryArg = {
  "jb": __emval_new_cstring,
  "kb": __emval_new_object,
  "ib": __emval_set_property,
- "$": __emval_take_value,
- "Z": _abort,
- "W": _clock_gettime,
+ "aa": __emval_take_value,
+ "_": _abort,
+ "X": _clock_gettime,
  "Se": _dlclose,
  "Te": _dlerror,
  "Ia": _dlsym,
@@ -10786,7 +10796,7 @@ var asmLibraryArg = {
  "Ra": _eglDestroyContext,
  "Ta": _eglDestroySurface,
  "cb": _eglGetConfigAttrib,
- "ta": _eglGetDisplay,
+ "ua": _eglGetDisplay,
  "Pa": _eglGetError,
  "_a": _eglGetProcAddress,
  "$a": _eglInitialize,
@@ -10969,33 +10979,33 @@ var asmLibraryArg = {
  "H": _emscripten_longjmp,
  "ve": _emscripten_memcpy_big,
  "Ve": _emscripten_request_fullscreen_strategy,
- "sa": _emscripten_request_pointerlock,
+ "ta": _emscripten_request_pointerlock,
  "we": _emscripten_resize_heap,
  "Ha": _emscripten_sample_gamepad_data,
- "ka": _emscripten_set_blur_callback_on_thread,
+ "la": _emscripten_set_blur_callback_on_thread,
  "M": _emscripten_set_canvas_element_size,
- "X": _emscripten_set_element_css_size,
- "la": _emscripten_set_focus_callback_on_thread,
+ "Y": _emscripten_set_element_css_size,
+ "ma": _emscripten_set_focus_callback_on_thread,
  "La": _emscripten_set_fullscreenchange_callback_on_thread,
  "Fa": _emscripten_set_gamepadconnected_callback_on_thread,
  "Ea": _emscripten_set_gamepaddisconnected_callback_on_thread,
- "ea": _emscripten_set_keydown_callback_on_thread,
- "ca": _emscripten_set_keypress_callback_on_thread,
- "da": _emscripten_set_keyup_callback_on_thread,
+ "fa": _emscripten_set_keydown_callback_on_thread,
+ "da": _emscripten_set_keypress_callback_on_thread,
+ "ea": _emscripten_set_keyup_callback_on_thread,
  "hb": _emscripten_set_main_loop_arg,
- "qa": _emscripten_set_mousedown_callback_on_thread,
- "oa": _emscripten_set_mouseenter_callback_on_thread,
- "na": _emscripten_set_mouseleave_callback_on_thread,
- "ra": _emscripten_set_mousemove_callback_on_thread,
- "pa": _emscripten_set_mouseup_callback_on_thread,
- "fa": _emscripten_set_pointerlockchange_callback_on_thread,
+ "ra": _emscripten_set_mousedown_callback_on_thread,
+ "pa": _emscripten_set_mouseenter_callback_on_thread,
+ "oa": _emscripten_set_mouseleave_callback_on_thread,
+ "sa": _emscripten_set_mousemove_callback_on_thread,
+ "qa": _emscripten_set_mouseup_callback_on_thread,
+ "ga": _emscripten_set_pointerlockchange_callback_on_thread,
  "Ka": _emscripten_set_resize_callback_on_thread,
- "ga": _emscripten_set_touchcancel_callback_on_thread,
- "ia": _emscripten_set_touchend_callback_on_thread,
- "ha": _emscripten_set_touchmove_callback_on_thread,
- "ja": _emscripten_set_touchstart_callback_on_thread,
+ "ha": _emscripten_set_touchcancel_callback_on_thread,
+ "ja": _emscripten_set_touchend_callback_on_thread,
+ "ia": _emscripten_set_touchmove_callback_on_thread,
+ "ka": _emscripten_set_touchstart_callback_on_thread,
  "Ja": _emscripten_set_visibilitychange_callback_on_thread,
- "ma": _emscripten_set_wheel_callback_on_thread,
+ "na": _emscripten_set_wheel_callback_on_thread,
  "Ie": _environ_get,
  "Je": _environ_sizes_get,
  "wd": _exit,
@@ -11004,7 +11014,7 @@ var asmLibraryArg = {
  "ob": _fd_seek,
  "Oe": _fd_write,
  "a": _getTempRet0,
- "aa": _gettimeofday,
+ "ba": _gettimeofday,
  "O": invoke_dii,
  "za": invoke_diii,
  "Aa": invoke_fiii,
@@ -11017,11 +11027,11 @@ var asmLibraryArg = {
  "Ge": invoke_iiiiid,
  "D": invoke_iiiiii,
  "u": invoke_iiiiiii,
- "_": invoke_iiiiiiii,
+ "$": invoke_iiiiiiii,
  "db": invoke_iiiiiiiii,
- "ua": invoke_iiiiiiiiii,
+ "va": invoke_iiiiiiiiii,
  "B": invoke_iiiiiiiiiii,
- "U": invoke_iiiiiiiiiiii,
+ "V": invoke_iiiiiiiiiiii,
  "L": invoke_iiiiiiiiiiiii,
  "mb": invoke_iiiiij,
  "qb": invoke_iiijiiiii,
@@ -11039,18 +11049,18 @@ var asmLibraryArg = {
  "y": invoke_viiiiiii,
  "gb": invoke_viiiiiiii,
  "K": invoke_viiiiiiiiii,
- "T": invoke_viiiiiiiiiiiiiii,
- "wa": _llvm_eh_typeid_for,
+ "U": invoke_viiiiiiiiiiiiiii,
+ "R": _llvm_eh_typeid_for,
  "memory": wasmMemory,
  "Pe": _nanosleep,
  "Hd": openbw_audio_free_wav_js,
- "ba": openbw_audio_init_js,
+ "ca": openbw_audio_init_js,
  "Me": openbw_audio_is_playing_js,
  "Ae": openbw_audio_load_wav_js,
  "Qe": openbw_audio_play_js,
  "Fe": openbw_audio_set_volume_js,
  "Ba": _round,
- "Y": _saveSetjmp,
+ "Z": _saveSetjmp,
  "p": _setTempRet0,
  "G": _sigaction,
  "Ma": _signal,
@@ -11568,17 +11578,6 @@ function invoke_viiii(index, a1, a2, a3, a4) {
  }
 }
 
-function invoke_iiiiiii(index, a1, a2, a3, a4, a5, a6) {
- var sp = stackSave();
- try {
-  return dynCall_iiiiiii(index, a1, a2, a3, a4, a5, a6);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_v(index) {
  var sp = stackSave();
  try {
@@ -11605,6 +11604,17 @@ function invoke_iiiii(index, a1, a2, a3, a4) {
  var sp = stackSave();
  try {
   return dynCall_iiiii(index, a1, a2, a3, a4);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_iiiiiii(index, a1, a2, a3, a4, a5, a6) {
+ var sp = stackSave();
+ try {
+  return dynCall_iiiiiii(index, a1, a2, a3, a4, a5, a6);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
