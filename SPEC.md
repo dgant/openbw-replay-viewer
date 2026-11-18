@@ -25,6 +25,11 @@ StarCraft: Brood War 1.16.1 and Remastered multiplayer replay files.
   player-slot order, with map-edge clamping. This happens before playback,
   regardless of automatic-camera preference, and respects restored zoom.
 - Both clients load game data from the configured asset host.
+- Recorded chat appears on the game canvas and in canvas recordings. Preserve
+  inline colors and wrap within the viewport, retaining up to eleven lines.
+  Use the optional bitmap font from the asset host for classic glyphs and
+  system text for uncovered characters or a missing font. UTF-8 and legacy
+  Korean messages must remain readable. Optional assets never block playback.
 - Malformed or unsupported replays must show a readable error, stop simulation
   and audio, and leave another replay loadable without a page refresh. Asset
   download failures must be retryable. Built-in AI and unimplemented custom-map

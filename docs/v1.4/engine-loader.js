@@ -15,9 +15,13 @@ function replay_engine_format(bytes) {
 
 function initialize_replay_engine(format, factory) {
     var canvas = document.getElementById("canvas");
+    var chat = createReplayChat(canvas, function() {
+        if (Module.replayChat === chat && activeReplayEngine) Module._ui_force_static_redraw();
+    });
     return new Promise(function(resolve, reject) {
         Module = factory({
             canvas: canvas,
+            replayChat: chat,
             print: console.log,
             printErr: console.error,
             setWindowTitle: function() { document.title = window.OPENBW_WINDOW_TITLE || "StarCraft Replay Viewer"; },

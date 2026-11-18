@@ -8,6 +8,7 @@ function loader() {
   const canvas = {};
   const context = vm.createContext({
     Uint8Array, Int8Array, DataView, Promise, console,
+    createReplayChat: () => ({}),
     document: { getElementById: () => canvas },
     createClassicReplayEngine: config => {
       config._load_replay = () => {};
